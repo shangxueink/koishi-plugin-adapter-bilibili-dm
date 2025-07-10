@@ -1,9 +1,11 @@
+
+import { BotConfig, PluginConfig } from './schema'
+import { BilibiliService } from './service'
 import { Adapter, Context } from 'koishi'
 import { BilibiliDmBot } from './bot'
-import { BilibiliService } from './service'
-import { BotConfig, PluginConfig } from './schema'
-import * as fs from 'fs/promises'
-import * as path from 'path'
+
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 
 export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
   static immediate = true

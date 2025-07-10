@@ -1,7 +1,7 @@
 import { Bot, Context, h, Fragment } from 'koishi'
+import { PrivateMessage } from './types'
 import { BotConfig } from './schema'
 import { HttpClient } from './http'
-import { PrivateMessage } from './types'
 
 export class BilibiliDmBot extends Bot<Context, BotConfig> {
   public readonly http: HttpClient

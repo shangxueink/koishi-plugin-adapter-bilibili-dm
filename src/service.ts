@@ -1,10 +1,11 @@
 import { Context, Logger } from 'koishi'
 import { BilibiliDmBot } from './bot'
-import { existsSync } from 'fs'
-import { readFile, writeFile } from 'fs/promises'
 import { BotStatus } from './index'
 import { PluginConfig } from './schema'
 import QRCode from 'qrcode'
+
+import { existsSync } from 'node:fs'
+import { readFile, writeFile } from 'node:fs/promises'
 
 const logger = new Logger('bilibili-dm:service')
 

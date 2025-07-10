@@ -1,6 +1,6 @@
 import { Context, Quester } from 'koishi'
 import { v4 as uuidv4 } from 'uuid'
-import { createHash } from 'crypto'
+import { createHash } from 'node:crypto'
 import {
   BiliApiResponse, MyInfoData, QrCodeData,
   QrCodePollResult, UploadImageData, WbiKeys, NavWbiImg, NewSessionsData, SessionMessagesData

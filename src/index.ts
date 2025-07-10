@@ -1,17 +1,20 @@
-import { Context, Schema } from 'koishi'
-import { BilibiliDmAdapter } from './adapter'
-import { BilibiliService } from './service'
+
+
 import { Config, PluginConfig, BotConfig } from './schema'
 import { DataService } from '@koishijs/plugin-console'
-import { resolve } from 'path'
+import { BilibiliDmAdapter } from './adapter'
+import { BilibiliService } from './service'
+import { Context, Schema } from 'koishi'
 import { BilibiliDmBot } from './bot'
-import { promises as fs } from 'fs'
-import { existsSync } from 'fs'
+
+import { promises as fs } from 'node:fs'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 export const name = 'adapter-bilibili-dm'
-export { Config }
 export const inject = ['http', 'server', 'console']
 export const filter = false
+export { Config }
 export const usage = `
 
 ---
