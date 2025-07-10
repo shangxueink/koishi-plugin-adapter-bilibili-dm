@@ -49,7 +49,6 @@ export class HttpClient {
     // 监听插件停用事件
     ctx.on('dispose', () => {
       this.isDisposed = true
-      this.logInfo('HttpClient is being disposed, cancelling all pending operations')
     })
   }
 
@@ -147,7 +146,8 @@ export class HttpClient {
     }
 
     try {
-      const res = await this.http.get<BiliApiResponse<{ url: string, refresh_token: string, timestamp: number, code: number, message: string }>>('https://passport.bilibili.com/x/passport-login/web/qrcode/poll', { params: { qrcode_key: oauthKey } })
+      const res = await this.http.get<BiliApiResponse<{ url: string, refresh_token: string, timestamp: number, code: number, message: string }>>
+        ('https://passport.bilibili.com/x/passport-login/web/qrcode/poll', { params: { qrcode_key: oauthKey } })
       const data = res.data
       if (data.code === 0 && data.url) {
         const url = new URL(data.url)
@@ -214,7 +214,7 @@ export class HttpClient {
         { params: { begin_ts, build: 0, mobi_app: 'web' } }
       )
       if (res.code === 0) return res.data
-      this.logInfo(`轮询新会话失败，错误码: ${res.code}, 错误信息: ${res.message}`)
+      this.ctx.logger.warn(`轮询新会话失败，错误码: ${res.code}, 错误信息: ${res.message}`)
       return null
     } catch (error) {
       this.ctx.logger.error('轮询新会话时发生网络错误:', error); return null

@@ -158,6 +158,7 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
 
     // 循环结束后 发送最后剩余的文本
     await flushTextBuffer()
+
     return sentMessageIds
   }
 

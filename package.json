@@ -1,43 +1,58 @@
 {
-  "name": "koishi-plugin-adapter-whatsapp-web",
-  "description": "WhatsApp-Web adapter for Koishi.",
-  "version": "0.0.5",
+  "name": "koishi-plugin-adapter-bilibili-dm",
+  "version": "2.0.0",
+  "description": "Bilibili Direct Message Adapter for Koishi\nBilibili 私信适配器",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
-    "lib",
-    "dist"
+    "client",
+    "src",
+    "dist",
+    "lib"
   ],
-  "author": "xpeng <contact@xpengs.com>",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/xiaopeng12138/adapter-whatsapp-web.git"
-  },
+  "author": "Roberta001 <2596628651@qq.com>",
+  "contributors": [
+    "leafingxyz <2596628651@qq.com>",
+    "shangxueink <1919892171@qq.com>"
+  ],
+  "homepage": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm",
   "bugs": {
-    "url": "https://github.com/xiaopeng12138/adapter-whatsapp-web/issues"
+    "url": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/issues"
   },
-  "homepage": "https://github.com/xiaopeng12138/adapter-whatsapp-web",
+  "scripts": {
+    "build": "tsc -b"
+  },
   "keywords": [
     "bot",
     "koishi",
-    "whatsapp",
     "adapter",
     "chatbot",
-    "satori"
+    "satori",
+    "bilibili"
   ],
-  "devDependencies": {
-    "@cordisjs/plugin-server": "^0.2.4",
-    "@koishijs/client": "^5.29.4",
-    "@satorijs/core": "^4.2.9",
-    "cordis": "^3.18.1",
-    "koishi": "^4.18.0"
+  "koishi": {
+    "description": {
+      "zh": "Bilibili 私信适配器",
+      "en": "Bilibili Direct Message Adapter for Koishi"
+    },
+    "service": {},
+    "preview": true,
+    "hidden": false
   },
   "peerDependencies": {
-    "@koishijs/plugin-console": "^5.29.4",
-    "@satorijs/core": "^4.2.9",
-    "koishi": "^4.18.0",
+    "koishi": "^4.16.0"
+  },
+  "dependencies": {
+    "@koishijs/client": "^5.29.4",
+    "axios": "^1.6.7",
     "qrcode": "^1.5.4",
-    "whatsapp-web.js": "^1.26.0"
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@types/qrcode": "^1.5.5",
+    "@types/uuid": "^9.0.8",
+    "typescript": "^5.3.3"
   }
 }

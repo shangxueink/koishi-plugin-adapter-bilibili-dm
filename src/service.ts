@@ -207,7 +207,7 @@ export class BilibiliService {
                 }
 
                 // 等待 2 秒后再次轮询
-                await new Promise(resolve => this.ctx.setTimeout(() => resolve, 2000))
+                await new Promise(resolve => setTimeout(resolve, 2000))
                 retryCount++
             }
 

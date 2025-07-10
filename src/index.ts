@@ -55,7 +55,7 @@ declare module '@koishijs/plugin-console' {
   }
 }
 
-// 数据服务
+// 创建数据服务
 export class BilibiliLauncher extends DataService<BotStatus> {
   private currentBot: string
   private consoleMessage: BotStatus = { status: 'init', selfId: '', message: '初始化中...' }
@@ -96,7 +96,7 @@ export class BilibiliLauncher extends DataService<BotStatus> {
       this.consoleMessage = { status: 'init', selfId, message: '正在初始化...' }
       this.refresh()
 
-      // 创建机器人
+      // 创建机器人配置
       const botConfig: BotConfig = {
         selfId: selfId
       }
