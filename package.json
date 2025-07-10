@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-adapter-bilibili-dm",
-  "description": "Bilibili Direct Message Adapter for Koishi",
-  "version": "0.0.1",
+  "version": "1.0.2",
+  "description": "Bilibili Direct Message Adapter for Koishi\nBilibili私信适配器",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -9,14 +9,32 @@
     "dist"
   ],
   "license": "MIT",
-  "scripts": {},
+  "author": "Your Name",
+  "scripts": {
+    "build": "tsc -b"
+  },
   "keywords": [
-    "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "adapter",
+    "bilibili",
+    "dm",
+    "私信"
   ],
-  "devDependencies": {},
   "peerDependencies": {
-    "koishi": "^4.18.7"
+    "koishi": "^4.16.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "qrcode-terminal": "^0.12.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/uuid": "^9.0.8",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.3"
   }
 }

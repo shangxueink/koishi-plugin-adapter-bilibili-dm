@@ -1,11 +1,12 @@
-import { Context, Schema } from 'koishi'
+import { Context } from 'koishi'
+import { BilibiliDmAdapter } from './adapter'
+import { Config, PluginConfig } from './schema'
 
 export const name = 'adapter-bilibili-dm'
+export { Config }
+export const inject = ['http']
 
-export interface Config {}
-
-export const Config: Schema<Config> = Schema.object({})
-
-export function apply(ctx: Context) {
-  // write your plugin here
+export function apply(ctx: Context, config: PluginConfig) {
+  // It is recommended to rename the plugin for clarity
+  ctx.plugin(BilibiliDmAdapter, config)
 }
