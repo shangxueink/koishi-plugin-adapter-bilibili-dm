@@ -1,4 +1,3 @@
-<!-- external/adapter-bilibili-dm/client/settings.vue -->
 <template>
   <div class="bilibili-dm-settings">
     <k-comment v-if="data" :type="getCommentType(data.status)">
