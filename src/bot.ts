@@ -1,56 +1,62 @@
-import { Bot, Context, h, Logger, Fragment } from 'koishi'
+import { Bot, Context, h, Fragment } from 'koishi'
 import { BotConfig } from './schema'
 import { HttpClient } from './http'
 import { PrivateMessage } from './types'
 
-const logger = new Logger('bilibili-dm:bot')
-
 export class BilibiliDmBot extends Bot<Context, BotConfig> {
   public readonly http: HttpClient
-  public username: string
+  private logInfo: (...args: any[]) => void
 
-  // 移除 _pollInterval，因为 ctx.setInterval 会自动管理
-  private _lastPollTs: number = 0 // 使用微秒
+  private _lastPollTs: number = 0 // 微秒
 
-  // 构造函数中增加对 ctx 的引用，以供后续使用
+  // 消息ID的缓存，用于避免重复处理相同的消息
+  // 轮询机制影响
+  private _processedMsgIds: Set<string> = new Set()
+  // 缓存的最大大小
+  private readonly _maxCacheSize: number
+
   constructor(public ctx: Context, config: BotConfig) {
-    super(ctx, config,'bilibili')
+    super(ctx, config, 'bilibili')
     this.platform = 'bilibili'
     this.selfId = config.selfId
-    this.username = ''
 
-    // 注入 this.ctx
+    // 初始化user属性
+    this.user = {
+      id: config.selfId,
+      name: '',
+      userId: config.selfId,
+      avatar: '',
+      username: ''
+    }
+
     this.http = new HttpClient(this.ctx)
     this._lastPollTs = (Date.now() - 20 * 1000) * 1000
+
+    this.logInfo = (ctx.bilibili_dm_service as any)?.logInfo || ((message: string, ...args: any[]) => {
+      // 如果没有找到logInfo函数，使用默认的ctx.logger.info
+      ctx.logger.info(message, ...args);
+    });
+    this._maxCacheSize = (ctx.bilibili_dm_service as any)?.config?.maxCacheSize || 1000;
   }
 
-  // 修正：start 方法现在负责启动轮询
+  // 启动轮询
   async start() {
     this.startPolling()
-    // 调用 super.start() 以确保 bot 状态正确更新
+    // 确保 bot 状态正确更新
     await super.start()
   }
 
-  // stop 方法现在可以简化，因为 ctx 会自动清理定时器
   async stop() {
-    logger.info(`[${this.selfId}] Stopping bot...`)
-    // 无需手动调用 stopPolling()
+    this.logInfo(`正在停止机器人...`)
     await super.stop()
   }
 
   private startPolling(): void {
-    logger.info(`[${this.selfId}] Starting polling for private messages...`)
-    
-    // 修正：使用 ctx.setInterval 代替 setInterval
-    // 这将定时器与插件的生命周期绑定，在插件停用时自动清除
+    // (this.ctx.bilibili_dm_service as any).logInfo(`开始轮询私信消息...`)
     this.ctx.setInterval(() => this.poll(), 3000)
   }
-
-  // stopPolling 方法不再需要，可以移除
-  // private stopPolling(): void { ... }
-
   private async poll() {
-    // 增加一个状态检查，如果 bot 不是 online 状态，则不进行轮询
+    // 如果 bot 不是 online 状态，则不进行轮询
     // 这可以作为一道额外的保险，防止在停用过程中执行
     if (!this.online) return
 
@@ -65,7 +71,7 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
 
       for (const session of newSessionsData.session_list) {
         if (session.unread_count > 0) {
-          logger.debug(`[${this.selfId}] New messages in session with talker_id: ${session.talker_id} (unread: ${session.unread_count})`)
+          this.logInfo(`发现用户 ${session.talker_id} 的新消息 (未读数: ${session.unread_count})`)
           const messageData = await this.http.fetchSessionMessages(
             session.talker_id,
             session.session_type,
@@ -83,10 +89,10 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
     } catch (error) {
       // 检查错误类型，如果是 INACTIVE_EFFECT，则静默处理，因为这是预期的关闭行为
       if (error.code === 'INACTIVE_EFFECT') {
-        logger.debug('Polling skipped due to inactive context during shutdown.')
+        this.ctx.logger.error('关闭过程中由于上下文不活跃，跳过轮询。')
         return
       }
-      logger.error(`[${this.selfId}] Error during polling: %o`, error)
+      this.ctx.logger.error(`轮询过程中发生错误: %o`, error)
     }
   }
 
@@ -97,63 +103,82 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
     const sentMessageIds: string[] = []
     const elements = h.normalize(content)
 
-    // ======================= 关键修正 =======================
-    // 不再对每个元素都调用API，而是先对元素进行分组和处理
-
+    //对元素进行处理
     let textBuffer = '' // 用于拼接连续的文本消息
 
     const flushTextBuffer = async () => {
-        if (textBuffer.trim()) {
-            const msgContent = { content: textBuffer.trim() }
-            const success = await this.http.sendMessage(Number(this.selfId), Number(talkerId), JSON.stringify(msgContent), 1)
-            if (success) {
-                sentMessageIds.push(Date.now().toString())
-            }
-            textBuffer = '' // 清空缓冲区
+      if (textBuffer.trim()) {
+        const msgContent = { content: textBuffer.trim() }
+        const success = await this.http.sendMessage(Number(this.selfId), Number(talkerId), JSON.stringify(msgContent), 1)
+        if (success) {
+          sentMessageIds.push(Date.now().toString())
         }
+        textBuffer = '' // 清空缓冲区
+      }
     }
 
     for (const element of elements) {
       try {
+
         if (element.type === 'text' && element.attrs.content) {
           // 如果是文本，先存入缓冲区
           textBuffer += element.attrs.content
-        } else if (element.type === 'image' && element.attrs.url) {
+        } else if ((element.type === 'image' || element.type === 'img') && (element.attrs.url || element.attrs.src)) {
+          const elementAttrsUrl = element.attrs.url || element.attrs.src
           // 遇到图片时，先将之前缓冲的文本发送出去
           await flushTextBuffer()
+          // 然后单独处理 发送图片
+          const imageData = await this.ctx.http.file(elementAttrsUrl)
+          const imageBuffer = imageData.data
+          const imageType = imageData.mime || imageData.type
 
-          // 然后单独处理和发送图片
-          const imageBuffer = await this.ctx.http.get(element.attrs.url, { responseType: 'arraybuffer' })
-          const uploadResult = await this.http.uploadImage(Buffer.from(imageBuffer))
+          const uploadResult = await this.http.uploadImage(Buffer.from(imageBuffer));
           if (!uploadResult) {
-            this.logger.warn(`Image upload failed for url: ${element.attrs.url}`)
+            this.ctx.logger.warn(`图片上传失败，URL: ${elementAttrsUrl}`)
             continue
           }
           const msgContent = {
             url: uploadResult.image_url,
-            height: uploadResult.image_height,
             width: uploadResult.image_width,
+            height: uploadResult.image_height,
+            imageType: imageType,
+            size: uploadResult.img_size || 0,
+            original: 1
           }
           const success = await this.http.sendMessage(Number(this.selfId), Number(talkerId), JSON.stringify(msgContent), 2)
           if (success) {
             sentMessageIds.push(Date.now().toString() + '_img')
           }
         }
-        // 可以为其他元素类型 (如 at, face 等) 添加更多 else if 分支
+        // TODO 为其他元素类型 (如 at 等) 添加更多 else if 分支
       } catch (error) {
-        this.logger.error('Error sending message element: %o', error)
+        this.ctx.logger.error('发送消息元素时发生错误: %o', error)
       }
     }
 
-    // 循环结束后，不要忘记发送最后剩余的文本
+    // 循环结束后 发送最后剩余的文本
     await flushTextBuffer()
-    // ========================================================
-
     return sentMessageIds
-}
+  }
 
   private adaptMessage(msg: PrivateMessage, sessionType: number, talkerId: number) {
     if (msg.sender_uid.toString() === this.selfId) return
+
+    // 检查消息ID是否已经处理过，如果是，则跳过
+    const msgId = msg.msg_key.toString()
+    if (this._processedMsgIds.has(msgId)) {
+      this.logInfo(`跳过已处理的消息: ${msgId}`)
+      return
+    }
+
+    // 将消息ID添加到缓存中
+    this._processedMsgIds.add(msgId)
+
+    // 如果缓存太大，删除最旧的消息ID
+    if (this._processedMsgIds.size > this._maxCacheSize) {
+      const oldestId = this._processedMsgIds.values().next().value
+      this._processedMsgIds.delete(oldestId)
+    }
 
     let contentFragment: Fragment
     try {
@@ -169,12 +194,12 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
           contentFragment = h('text', { content: `[消息已撤回]` })
           break
         default:
-          logger.debug(`Unsupported message type: ${msg.msg_type}, content: ${msg.content}`)
+          this.logInfo(`不支持的消息类型: ${msg.msg_type}, 内容: ${msg.content}`)
           contentFragment = `[Unsupported message type: ${msg.msg_type}]`
           break
       }
     } catch (e) {
-      logger.warn(`Failed to parse message content: ${msg.content}, error: ${e}`)
+      this.logInfo(`解析消息内容失败: ${msg.content}, 错误: ${e}`)
       contentFragment = '[消息解析失败]'
     }
 
@@ -185,7 +210,6 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
       platform: this.platform,
       selfId: this.selfId,
       timestamp: msg.timestamp * 1000,
-      
       channel: {
         id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`,
         type: sessionType === 1 ? 1 : 0,
@@ -208,17 +232,17 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
     })
 
     if (msg.msg_status === 1) {
-        this.dispatch(this.session({
-            type: 'message-deleted',
-            platform: this.platform,
-            selfId: this.selfId,
-            timestamp: Date.now(),
-            channel: { id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`, type: sessionType === 1 ? 1 : 0 },
-            user: { id: msg.sender_uid.toString() },
-            message: { id: msg.msg_key.toString() }
-        }))
+      this.dispatch(this.session({
+        type: 'message-deleted',
+        platform: this.platform,
+        selfId: this.selfId,
+        timestamp: Date.now(),
+        channel: { id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`, type: sessionType === 1 ? 1 : 0 },
+        user: { id: msg.sender_uid.toString() },
+        message: { id: msg.msg_key.toString() }
+      }))
     } else {
-        this.dispatch(session)
+      this.dispatch(session)
     }
   }
 }

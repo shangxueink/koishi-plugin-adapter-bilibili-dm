@@ -1,40 +1,58 @@
 {
   "name": "koishi-plugin-adapter-bilibili-dm",
-  "version": "1.0.2",
-  "description": "Bilibili Direct Message Adapter for Koishi\nBilibili私信适配器",
+  "version": "2.0.0",
+  "description": "Bilibili Direct Message Adapter for Koishi\nBilibili 私信适配器",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
-    "lib",
-    "dist"
+    "client",
+    "src",
+    "dist",
+    "lib"
   ],
   "license": "MIT",
-  "author": "Your Name",
+  "author": "Roberta001 <2596628651@qq.com>",
+  "contributors": [
+    "leafingxyz <2596628651@qq.com>",
+    "shangxueink <1919892171@qq.com>"
+  ],
+  "homepage": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm",
+  "bugs": {
+    "url": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/issues"
+  },
   "scripts": {
     "build": "tsc -b"
   },
   "keywords": [
+    "bot",
     "koishi",
-    "plugin",
     "adapter",
-    "bilibili",
-    "dm",
-    "私信"
+    "chatbot",
+    "satori",
+    "bilibili"
   ],
+  "koishi": {
+    "description": {
+      "zh": "Bilibili 私信适配器",
+      "en": "Bilibili Direct Message Adapter for Koishi"
+    },
+    "service": {},
+    "preview": true,
+    "hidden": false
+  },
   "peerDependencies": {
     "koishi": "^4.16.0"
   },
   "dependencies": {
+    "@koishijs/client": "^5.29.4",
     "axios": "^1.6.7",
-    "qrcode-terminal": "^0.12.0",
-    "uuid": "^9.0.1",
-    "ws": "^8.16.0"
+    "qrcode": "^1.5.4",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
-    "@types/qrcode-terminal": "^0.12.2",
+    "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
-    "@types/ws": "^8.5.10",
     "typescript": "^5.3.3"
   }
 }

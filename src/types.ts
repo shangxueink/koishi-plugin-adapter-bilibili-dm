@@ -1,4 +1,3 @@
-// Generic API response structure
 export interface BiliApiResponse<T> {
   code: number
   message: string
@@ -35,7 +34,6 @@ export interface SessionInfo {
   max_seqno: number
   is_follow: number
   is_dnd: number
-  // other fields can be added if needed
 }
 
 // Response data for /new_sessions
@@ -46,16 +44,16 @@ export interface NewSessionsData {
 
 // Response data for /fetch_session_msgs
 export interface SessionMessagesData {
-    messages?: PrivateMessage[]
-    has_more: number
-    min_seqno: number
-    max_seqno: number
+  messages?: PrivateMessage[]
+  has_more: number
+  min_seqno: number
+  max_seqno: number
 }
 
 // Login related types
 export interface QrCodeData { url: string; qrcode_key: string; }
 export interface QrCodePollResult { status: 'waiting' | 'scanned' | 'success' | 'expired'; message: string; cookies?: Record<string, string>; }
-export interface MyInfoData { name: string; mid: number; }
+export interface MyInfoData { name: string; mid: number; face: string; }
 
 // WBI keys from /nav endpoint
 export interface NavWbiImg {
@@ -72,4 +70,5 @@ export interface UploadImageData {
   image_url: string
   image_width: number
   image_height: number
+  img_size?: number
 }
