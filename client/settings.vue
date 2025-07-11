@@ -74,18 +74,20 @@ const qrCodeTimer = ref<number | null>(null)
 const qrCodeExpiryTime = ref<number | null>(null)
 
 const local = inject('manager.settings.local', ref({ name: '' })) as any
-//  const config = inject('manager.settings.config', ref({})) as any
-//  const current = inject('manager.settings.current', ref({})) as any
+const config = inject('manager.settings.config', ref({})) as any
+const current = inject('manager.settings.current', ref({})) as any
 
 /*
+// 调试时 要取消注释
 console.group("==================== Bilibili DM Plugin Debug ====================")
 // 确保 local.value 存在，再访问 name 属性
-console.log("Injecting 'manager.settings.local' name:", local.value?.name)
-console.log("Koishi Client Store:", store) // 打印整个 store 对象
+console.log("local.value?.name", local.value?.name)
+console.log("config", config) // 打印整个 store 对象
+console.log("current",current)
 console.groupEnd()
 */
 
-// 插件的预期名称，根据 package.json
+// 插件的预期名称 包名
 const PLUGIN_NAME = 'koishi-plugin-adapter-bilibili-dm'; 
 
 const data = computed(() => {
@@ -95,14 +97,44 @@ const data = computed(() => {
     return null;
   }
   
-  // 名称匹配，从 store 中获取 bilibili-dm 数据
-  const bilibiliDmData = (store as any)['bilibili-dm'];
-  if (!bilibiliDmData) {
-    console.warn('[Bilibili DM] 插件名称匹配，但 store 中没有找到 "bilibili-dm" 数据。');
-  } else {
-    console.log('[Bilibili DM] 成功从 store 获取 "bilibili-dm" 数据:', bilibiliDmData);
+  // 获取当前配置的selfId
+  const currentSelfId = config.value?.selfId;
+  if (!currentSelfId) {
+    console.warn('[Bilibili DM] 无法获取当前配置的selfId');
+    return null;
   }
-  return bilibiliDmData;
+  
+  // 构造唯一的服务ID
+  const serviceId = `bilibili-dm-${currentSelfId}`;
+  console.log(`[Bilibili DM] 尝试从服务 "${serviceId}" 获取数据，当前selfId: ${currentSelfId}`);
+
+  // 从 store 中获取对应服务ID的数据
+  const serviceData = (store as any)[serviceId];
+  if (!serviceData) {
+    console.warn(`[Bilibili DM] 未找到服务 "${serviceId}" 的数据`);
+    return null;
+  }
+
+  // 获取当前selfId的状态数据
+  const instanceData = serviceData[currentSelfId];
+  if (!instanceData) {
+    console.log('[Bilibili DM] 未找到selfId为', currentSelfId, '的状态数据，创建初始状态');
+    // 返回一个初始状态，而不是null，这样UI会显示
+    return {
+      status: 'offline',
+      selfId: currentSelfId,
+      message: '机器人未登录，请点击登录按钮'
+    };
+  }
+
+  // 确保状态对象包含正确的selfId
+  if (instanceData && (!instanceData.selfId || instanceData.selfId !== currentSelfId)) {
+    console.log('[Bilibili DM] 状态对象的selfId不正确，修正为:', currentSelfId);
+    instanceData.selfId = currentSelfId;
+  }
+
+  console.log('[Bilibili DM] 成功获取实例数据:', instanceData);
+  return instanceData;
 });
 
 // 监听状态变化
@@ -116,7 +148,7 @@ watch(() => data.value?.status, (newStatus: string | undefined, oldStatus: strin
   }
 }, { immediate: true }) // 立即执行一次，以处理初始状态
 
-// 设置二维码过期计时器（二维码通常有效期为3分钟）
+// 设置二维码过期计时器（二维码通常有效期为3分钟） B站又好像是2分钟？
 function startQrCodeExpiryTimer() {
   clearQrCodeExpiryTimer()
   
@@ -154,7 +186,15 @@ onUnmounted(() => {
 function startLogin(selfId: string) {
   qrCodeExpired.value = false
   qrCodeLoading.value = true
-  send('bilibili-dm/start-login' as any, { selfId })
+  
+  // 使用包含selfId的唯一事件名称
+  const loginEventName = `bilibili-dm-${selfId}/start-login`;
+  console.log(`[Bilibili DM] 发送登录请求到事件: ${loginEventName}, selfId: ${selfId}, config.value?.selfId: ${config.value?.selfId}`);
+  
+  // 确保传递正确的selfId
+  send(loginEventName as any, { 
+    selfId: selfId || config.value?.selfId 
+  })
 }
 
 // 根据状态获取评论类型

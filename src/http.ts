@@ -8,6 +8,8 @@ import {
 } from './types'
 import { AxiosRequestHeaders } from 'axios'
 
+const logger = new Logger('adapter-bilibili-dm');
+
 const MIXIN_KEY_ENCODE_TABLE = [
   46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
   33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
@@ -24,19 +26,27 @@ export class HttpClient {
   private wbiKeysExpire = 0
   private logInfo: (...args: any[]) => void
   private wbiKeysFetchPromise: Promise<WbiKeys> | null = null // 作为锁
-  private isDisposed = false // 添加一个标志，表示插件是否已停用
+  private isDisposed = false // 标志，表示插件是否已停用
   private avatarBase64: boolean
+  private selfId: string
+  private cookieVerified: boolean = false // 标志，表示cookie已经验证成功
 
-  constructor(private ctx: Context) {
-    // 获取service中的logInfo函数
+  constructor(private ctx: Context, config?: any) {
+    // 获取selfId
+    this.selfId = config?.selfId || (ctx.bilibili_dm_service as any)?.config?.selfId || 'unknown';
+
     this.logInfo = (ctx.bilibili_dm_service as any)?.logInfo || ((message: string, ...args: any[]) => {
       // 如果没有找到logInfo函数，使用默认的ctx.logger.info
-      ctx.logger.info(message, ...args);
+      ctx.logger.info(`[${this.selfId}] ${message}`, ...args);
     });
 
-    // 获取配置项
-    const config = (ctx.bilibili_dm_service as any)?.config || {};
-    this.avatarBase64 = config.avatarBase64 !== undefined ? config.avatarBase64 : true;
+    // 使用传入的配置或从service获取配置
+    const effectiveConfig = config || (ctx.bilibili_dm_service as any)?.config || {};
+    this.avatarBase64 = effectiveConfig.avatarBase64 !== undefined ? effectiveConfig.avatarBase64 : true;
+
+    // 记录调试日志 
+    this.logInfo(`[${this.selfId}] HttpClient初始化，avatarBase64=${this.avatarBase64}`);
+    this.logInfo(`HttpClient初始化，avatarBase64=${this.avatarBase64}, selfId=${this.selfId}`);
     this.http = ctx.http.extend({
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -57,9 +67,25 @@ export class HttpClient {
     this.cookies = cookies
     this.biliJct = cookies.bili_jct || ''
     const cookieString = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
+
+    // 更新HTTP客户端的默认cookie
     if (this.http.config.headers) {
       (this.http.config.headers as AxiosRequestHeaders)['Cookie'] = cookieString
     }
+
+    // 记录cookie设置成功
+    this.logInfo(`[${this.selfId}] 成功设置cookie，长度: ${cookieString.length}`)
+  }
+
+  // 检查cookie是否已设置并验证
+  hasCookies(): boolean {
+    return this.cookieVerified || !!(this.cookies && this.cookies.SESSDATA && this.cookies.bili_jct)
+  }
+
+  // 设置cookie验证标志
+  setCookieVerified(verified: boolean): void {
+    this.cookieVerified = verified
+    this.logInfo(`[${this.selfId}] Cookie验证状态设置为: ${verified}`)
   }
 
   // #region WBI Signing
@@ -102,7 +128,7 @@ export class HttpClient {
         }
         throw new Error(`Failed to get WBI keys: ${res.message || 'Invalid response data'}`)
       } catch (error) {
-        this.ctx.logger.error('获取WBI密钥时发生网络错误:', error)
+        logger.error('获取WBI密钥时发生网络错误:', error)
         throw error
       } finally {
         // 无论成功还是失败，都清除Promise锁
@@ -163,15 +189,26 @@ export class HttpClient {
       else if (data.code === 86090) return { status: 'scanned', message: '已扫描，待确认' }
       return { status: 'waiting', message: '等待扫描' }
     } catch (error) {
-      this.ctx.logger.error('[轮询] 轮询二维码状态时发生网络错误:', error);
+      logger.error('[轮询] 轮询二维码状态时发生网络错误:', error);
       return { status: 'expired', message: '网络错误' }
     }
   }
 
   async getMyInfo(): Promise<{ nickname: string, avatar: string, isValid: boolean }> {
     try {
+      this.logInfo(`[${this.selfId}] 正在验证cookie有效性，请求用户信息...`);
       const res = await this.http.get<BiliApiResponse<MyInfoData>>('https://api.bilibili.com/x/space/myinfo')
+
+      if (res.code !== 0) {
+        logger.error(`[${this.selfId}] 验证cookie失败，API返回错误: ${res.code} - ${res.message}`);
+        this.setCookieVerified(false); // 设置cookie验证失败
+        return { nickname: '', avatar: '', isValid: false };
+      }
+
       if (res.code === 0 && res.data) {
+        this.logInfo(`[${this.selfId}] 验证cookie成功，用户名: ${res.data.name}`);
+        this.setCookieVerified(true); // 设置cookie验证成功
+
         // 获取头像
         let avatarUrl = res.data.face;
 
@@ -186,9 +223,9 @@ export class HttpClient {
             const base64 = Buffer.from(avatarBuffer).toString('base64');
             avatarUrl = `data:${avatarMimeType};base64,${base64}`;
 
-            this.logInfo('成功获取头像并转换为base64格式');
+            this.logInfo(`成功获取头像并转换为base64格式，用户: ${res.data.name}, 头像URL: ${res.data.face.substring(0, 50)}...`);
           } catch (avatarError) {
-            this.ctx.logger.error('获取头像失败，使用原始URL:', avatarError);
+            logger.error('获取头像失败，使用原始URL:', avatarError);
             // 如果获取失败，使用原始URL
           }
         }
@@ -199,9 +236,12 @@ export class HttpClient {
           isValid: true
         };
       }
+      this.setCookieVerified(false); // 设置cookie验证失败
       return { nickname: '', avatar: '', isValid: false }
     } catch (error) {
-      this.ctx.logger.error('验证Cookie失败:', error); return { nickname: '', avatar: '', isValid: false }
+      logger.error('验证Cookie失败:', error);
+      this.setCookieVerified(false); // 设置cookie验证失败
+      return { nickname: '', avatar: '', isValid: false }
     }
   }
   // #endregion
@@ -228,32 +268,59 @@ export class HttpClient {
         }
       }
 
-      this.ctx.logger.warn(`获取B站用户 ${userId} 信息失败: ${res.message} (Code: ${res.code})`)
+      logger.warn(`获取B站用户 ${userId} 信息失败: ${res.message} (Code: ${res.code})`)
       return null
     } catch (error) {
-      this.ctx.logger.error(`获取B站用户 ${userId} 信息时发生网络错误:`, error)
+      logger.error(`获取B站用户 ${userId} 信息时发生网络错误:`, error)
       return null
     }
   }
 
   // #region Private Message API
   async getNewSessions(begin_ts: number): Promise<NewSessionsData | null> {
-    // this.logInfo(`正在轮询自时间戳 ${begin_ts} 以来的新会话`)
+    if (this.isDisposed) {
+      return null
+    }
+
+    // 检查cookie是否存在
+    if (!this.cookies || !this.cookies.SESSDATA || !this.cookies.bili_jct || !this.cookieVerified) {
+      logger.warn(`[${this.selfId}] 轮询新会话失败: 未设置cookie或cookie无效`)
+      return null
+    }
+
     try {
       const res = await this.http.get<BiliApiResponse<NewSessionsData>>(
         'https://api.vc.bilibili.com/session_svr/v1/session_svr/new_sessions',
-        { params: { begin_ts, build: 0, mobi_app: 'web' } }
+        {
+          params: { begin_ts, build: 0, mobi_app: 'web' },
+          headers: {
+            'Cookie': Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join('; ')
+          }
+        }
       )
       if (res.code === 0) return res.data
-      this.ctx.logger.warn(`轮询新会话失败，错误码: ${res.code}, 错误信息: ${res.message}`)
+      logger.warn(`[${this.selfId}] 轮询新会话失败，错误码: ${res.code}, 错误信息: ${res.message}`)
       return null
     } catch (error) {
-      this.ctx.logger.error('轮询新会话时发生网络错误:', error); return null
+      logger.error(`[${this.selfId}] 轮询新会话时发生网络错误:`, error)
+      return null
     }
   }
 
   async fetchSessionMessages(talker_id: number, session_type: number, begin_seqno: number): Promise<SessionMessagesData | null> {
-    this.logInfo(`正在获取用户 ${talker_id} 在时间戳 ${begin_seqno} 之后的消息`)
+    // 检查cookie是否已验证
+    if (!this.cookieVerified) {
+      logger.warn(`[${this.selfId}] 获取消息失败: 未设置cookie或cookie无效`)
+      return null
+    }
+
+    // 检查cookie是否存在
+    if (!this.cookies || !this.cookies.SESSDATA || !this.cookies.bili_jct) {
+      logger.warn(`[${this.selfId}] 获取消息失败: 未设置cookie或cookie无效`)
+      return null
+    }
+
+    this.logInfo(`[${this.selfId}] 正在获取用户 ${talker_id} 在时间戳 ${begin_seqno} 之后的消息`)
     try {
       const res = await this.http.get<BiliApiResponse<SessionMessagesData>>(
         'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs',
@@ -265,14 +332,17 @@ export class HttpClient {
             size: 20,
             build: 0,
             mobi_app: 'web'
+          },
+          headers: {
+            'Cookie': Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join('; ')
           }
         }
       )
       if (res.code === 0) return res.data
-      this.logInfo(`获取用户 ${talker_id} 的消息失败: ${res.message} (错误码: ${res.code})`)
+      this.logInfo(`[${this.selfId}] 获取用户 ${talker_id} 的消息失败: ${res.message} (错误码: ${res.code})`)
       return null
     } catch (error) {
-      this.ctx.logger.error(`获取用户 ${talker_id} 的消息时发生网络错误:`, error)
+      logger.error(`[${this.selfId}] 获取用户 ${talker_id} 的消息时发生网络错误:`, error)
       return null
     }
   }
@@ -293,7 +363,7 @@ export class HttpClient {
       )
       this.logInfo(`已将用户 ${talker_id} 的会话标记为已读，直到时间戳 ${ack_seqno}`)
     } catch (error) {
-      this.ctx.logger.error(`将用户 ${talker_id} 的会话标记为已读失败:`, error)
+      logger.error(`将用户 ${talker_id} 的会话标记为已读失败:`, error)
     }
   }
 
@@ -319,7 +389,7 @@ export class HttpClient {
       this.logInfo('上传图片失败:', res.message)
       return null
     } catch (error) {
-      this.ctx.logger.error('上传图片时发生网络错误:', error)
+      logger.error('上传图片时发生网络错误:', error)
       return null
     }
   }
@@ -388,7 +458,7 @@ export class HttpClient {
       if (error.response) {
         this.logInfo(`发送消息时发生 HTTP 错误 (Status: ${error.response.status}): %o`, error.response.data);
       } else {
-        this.ctx.logger.error(`发送消息时发生网络或未知错误:`, error);
+        logger.error(`发送消息时发生网络或未知错误:`, error);
       }
       return false;
     }

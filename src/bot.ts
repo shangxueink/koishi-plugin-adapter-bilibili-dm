@@ -1,9 +1,9 @@
 //  src\bot.ts
-import { Bot, Context, h, Fragment } from 'koishi'
+import { Bot, Context, h, Fragment, Logger } from 'koishi'
 import { PrivateMessage } from './types'
 import { BotConfig } from './schema'
 import { HttpClient } from './http'
-
+const logger = new Logger('adapter-bilibili-dm');
 export class BilibiliDmBot extends Bot<Context, BotConfig> {
   public readonly http: HttpClient
   private logInfo: (...args: any[]) => void
@@ -30,49 +30,121 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
       username: ''
     }
 
-    this.http = new HttpClient(this.ctx)
+    // 直接从service获取配置，确保每个实例使用正确的配置
+    const serviceConfig = (ctx.bilibili_dm_service as any)?.config || {};
+
+    // 创建一个配置副本，并确保selfId正确
+    const botConfig = {
+      ...serviceConfig,
+      selfId: this.selfId // 确保使用当前机器人的selfId
+    };
+
+    logger.info(`[${this.selfId}] 创建BilibiliDmBot实例，selfId: ${this.selfId}`)
+    this.http = new HttpClient(this.ctx, botConfig)
     this._lastPollTs = (Date.now() - 20 * 1000) * 1000
 
     this.logInfo = (ctx.bilibili_dm_service as any)?.logInfo || ((message: string, ...args: any[]) => {
       // 如果没有找到logInfo函数，使用默认的ctx.logger.info
-      ctx.logger.info(message, ...args);
+      ctx.logger.info(`[${this.selfId}] ${message}`, ...args);
     });
     this._maxCacheSize = (ctx.bilibili_dm_service as any)?.config?.maxCacheSize || 1000;
+
+    this.logInfo(`[${this.selfId}] BilibiliDmBot实例创建完成，准备启动`)
   }
 
   // 启动轮询
   async start() {
-    this.startPolling()
+    this.logInfo(`[${this.selfId}] 开始启动机器人...`)
+
     // 确保 bot 状态正确更新
     await super.start()
+
+    // 检查cookie是否已设置
+    if (!this.http.hasCookies()) {
+      this.logInfo(`[${this.selfId}] 警告：启动机器人时cookie未设置，可能导致轮询失败`)
+    } else {
+      this.logInfo(`[${this.selfId}] cookie已设置，准备开始轮询`)
+    }
+
+    // 延迟启动轮询，确保cookie已设置
+    setTimeout(() => {
+      this.startPolling()
+      this.logInfo(`[${this.selfId}] 轮询已启动，机器人状态: ${this.online ? 'online' : 'offline'}`)
+    }, 2000)
+
+    this.logInfo(`[${this.selfId}] 机器人启动完成，状态: ${this.online ? 'online' : 'offline'}`)
   }
 
   async stop() {
-    this.logInfo(`正在停止机器人...`)
+    this.logInfo(`[${this.selfId}] 正在停止机器人...`)
     await super.stop()
+    this.logInfo(`[${this.selfId}] 机器人已停止`)
   }
 
   private startPolling(): void {
-    // (this.ctx.bilibili_dm_service as any).logInfo(`开始轮询私信消息...`)
-    this.ctx.setInterval(() => this.poll(), 3000)
+    this.logInfo(`[${this.selfId}] 开始设置轮询定时器...`)
+
+    // 首先检查cookie是否已验证
+    if (!this.http.hasCookies()) {
+      this.logInfo(`[${this.selfId}] 警告：启动轮询时cookie未验证，将延迟启动轮询`)
+
+      // 如果cookie未验证，延迟5秒后再次尝试启动轮询
+      this.ctx.setTimeout(() => {
+        this.logInfo(`[${this.selfId}] 延迟后再次尝试启动轮询...`)
+        this.startPolling()
+      }, 5000)
+
+      return
+    }
+
+    this.logInfo(`[${this.selfId}] cookie已验证，开始设置轮询定时器`)
+
+    // 为每个机器人实例创建唯一的轮询定时器
+    const intervalId = this.ctx.setInterval(() => {
+      // 确保机器人在线才进行轮询
+      if (this.online) {
+        this.poll().catch(err => {
+          logger.error(`[${this.selfId}] 轮询过程中发生错误: ${err.message}`)
+        })
+      }
+    }, 3000)
+
+    // 在机器人停止时清除定时器
+    this.ctx.on('dispose', () => {
+      intervalId()
+      this.logInfo(`[${this.selfId}] 轮询定时器已清除`)
+    })
+
+    this.logInfo(`[${this.selfId}] 轮询定时器设置完成`)
   }
   private async poll() {
     // 如果 bot 不是 online 状态，则不进行轮询
     // 这可以作为一道额外的保险，防止在停用过程中执行
-    if (!this.online) return
+    if (!this.online) {
+      this.logInfo(`[${this.selfId}] 机器人不在线，跳过轮询`)
+      return
+    }
 
     try {
       const pollTs = Date.now() * 1000
       const newSessionsData = await this.http.getNewSessions(this._lastPollTs)
       this._lastPollTs = pollTs
 
-      if (!newSessionsData || !newSessionsData.session_list?.length) {
+      // 如果API返回null（可能是cookie无效或网络错误），则跳过本次轮询
+      if (!newSessionsData) {
         return
       }
 
+      // 如果没有新会话，直接返回
+      if (!newSessionsData.session_list?.length) {
+        return
+      }
+
+      this.logInfo(`[${this.selfId}] 轮询到 ${newSessionsData.session_list.length} 个会话`)
+
       for (const session of newSessionsData.session_list) {
         if (session.unread_count > 0) {
-          this.logInfo(`发现用户 ${session.talker_id} 的新消息 (未读数: ${session.unread_count})`)
+          this.logInfo(`[${this.selfId}] 发现用户 ${session.talker_id} 的新消息 (未读数: ${session.unread_count})`)
           const messageData = await this.http.fetchSessionMessages(
             session.talker_id,
             session.session_type,
@@ -80,6 +152,7 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
           )
 
           if (messageData?.messages) {
+            this.logInfo(`[${this.selfId}] 获取到 ${messageData.messages.length} 条消息`)
             for (const msg of messageData.messages.reverse()) {
               this.adaptMessage(msg, session.session_type, session.talker_id)
             }
@@ -90,10 +163,10 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
     } catch (error) {
       // 检查错误类型，如果是 INACTIVE_EFFECT，则静默处理，因为这是预期的关闭行为
       if (error.code === 'INACTIVE_EFFECT') {
-        this.ctx.logger.error('关闭过程中由于上下文不活跃，跳过轮询。')
+        logger.error(`[${this.selfId}] 关闭过程中由于上下文不活跃，跳过轮询。`)
         return
       }
-      this.ctx.logger.error(`轮询过程中发生错误: %o`, error)
+      logger.error(`[${this.selfId}] 轮询过程中发生错误: %o`, error)
     }
   }
 
@@ -135,7 +208,7 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
 
           const uploadResult = await this.http.uploadImage(Buffer.from(imageBuffer));
           if (!uploadResult) {
-            this.ctx.logger.warn(`图片上传失败，URL: ${elementAttrsUrl}`)
+            logger.warn(`图片上传失败，URL: ${elementAttrsUrl}`)
             continue
           }
           const msgContent = {
@@ -152,8 +225,9 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
           }
         }
         // TODO 为其他元素类型 (如 at 等) 添加更多 else if 分支
+        // 不支持at
       } catch (error) {
-        this.ctx.logger.error('发送消息元素时发生错误: %o', error)
+        logger.error('发送消息元素时发生错误: %o', error)
       }
     }
 
