@@ -1,18 +1,30 @@
+//  src\schema.ts
 import { Schema } from 'koishi'
 
 export interface BotConfig {
   selfId: string
-  // 'authType' is somewhat redundant as only QR code -> cookie is implemented
 }
 
 export interface PluginConfig {
-  bots: BotConfig[]
+  selfId: string
+  loggerinfo: boolean
+  avatarBase64: boolean
+  maxCacheSize: number
 }
 
-const BotConfigSchema = Schema.object({
-  selfId: Schema.string().description('The Bilibili UID of the bot. This is required to identify the bot and store session data.').required(),
-}).description('Bot Account Configuration')
+export const Config: Schema<PluginConfig> =
+  Schema.intersect([
 
-export const Config: Schema<PluginConfig> = Schema.object({
-  bots: Schema.array(BotConfigSchema).description('List of bot accounts to log in. You can add multiple accounts to run multiple bots simultaneously.'),
-})
+    Schema.object({
+      selfId: Schema.string().required().description('要登录的账号UID'),
+    }).description('基础设置'),
+
+    Schema.object({
+      avatarBase64: Schema.boolean().default(true).description('转为base64头像以解决控制台显示问题'),
+      maxCacheSize: Schema.number().default(1000).description("缓存接收的msgid，以避免轮询特性导致的消息重复<br>（单位：个）"),
+    }).description('进阶设置'),
+
+    Schema.object({
+      loggerinfo: Schema.boolean().default(false).description("日志调试模式"),
+    }).description('调试选项'),
+  ])

@@ -1,104 +1,87 @@
-import { Adapter, Context, Logger } from 'koishi'
-import { BilibiliDmBot } from './bot'
-import { BotConfig, PluginConfig } from './schema'
-import * as fs from 'fs/promises'
-import * as path from 'path'
-import qrcode from 'qrcode-terminal'
 
-const logger = new Logger('bilibili-dm')
+//  src\adapter.ts
+import { BotConfig, PluginConfig } from './schema'
+import { BilibiliService } from './service'
+import { Adapter, Context } from 'koishi'
+import { BilibiliDmBot } from './bot'
+
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 
 export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
   static immediate = true
+  private service: BilibiliService
 
   constructor(ctx: Context, public config: PluginConfig) {
     super(ctx)
+
+    // 创建服务
+    this.service = ctx.bilibili_dm_service = new BilibiliService(ctx, config)
+
+    // 注册路由，提供给前端获取状态
+    ctx.server.get('/bilibili-dm/status', async (ctx) => {
+      const status = this.service.getStatus()
+      this.service.logInfo('收到前端状态数据请求，返回数据:', JSON.stringify(status, (key, value) => {
+        // 避免日志中输出过长的图片数据
+        if (key === 'image' && typeof value === 'string' && value.length > 100) {
+          return value.substring(0, 100) + '... [图片数据已截断]'
+        }
+        return value
+      }))
+      ctx.body = status
+    })
   }
 
   async fork() {
-    logger.info('Bilibili Private Message Adapter is starting...')
-    for (const botConfig of this.config.bots) {
-      await this.startBot(botConfig)
+    // 创建机器人配置
+    const botConfig: BotConfig = {
+      selfId: this.config.selfId
     }
+
+    await this.startBot(botConfig)
   }
 
   async dispose() {
-    logger.info('Stopping Bilibili Private Message Adapter...')
+    this.service.logInfo('正在停止 Bilibili 私信适配器...')
     await Promise.all(this.bots.map(bot => bot.stop()))
-    // The parent class 'Adapter' handles clearing the bots array
   }
 
   async startBot(botConfig: BotConfig) {
     const bot = new BilibiliDmBot(this.ctx, botConfig)
 
-    logger.info(`[${botConfig.selfId}] Starting bot...`)
+    this.service.logInfo(`[${botConfig.selfId}] 正在启动机器人...`)
 
-    const sessionFile = path.join(this.ctx.baseDir, 'data', 'bilibili-dm', `${botConfig.selfId}.cookie.json`)
+    // 更新状态为初始化
+    this.service.updateStatus(botConfig.selfId, {
+      status: 'init',
+      selfId: botConfig.selfId,
+      message: '正在初始化...'
+    })
+
+    const sessionFile = path.join(this.ctx.baseDir, 'data', 'adapter-bilibili-dm', `${botConfig.selfId}.cookie.json`)
     await fs.mkdir(path.dirname(sessionFile), { recursive: true })
-
     try {
-      let cookies: Record<string, string> | null = null
-      try {
-        cookies = JSON.parse(await fs.readFile(sessionFile, 'utf-8'))
-        logger.info(`[${botConfig.selfId}] Found local cookie file.`)
-      } catch (error) {
-        if (error.code !== 'ENOENT') logger.warn(`[${botConfig.selfId}] Failed to read cookie file:`, error)
+      // 使用服务进行登录
+      const loginSuccess = await this.service.startLogin(bot, sessionFile)
+
+      if (loginSuccess) {
+        this.bots.push(bot)
+      } else {
+        // 不抛出错误，而是记录日志并更新状态
+        this.service.logInfo(`[${botConfig.selfId}] 登录失败`)
+        this.service.updateStatus(botConfig.selfId, {
+          status: 'error',
+          message: '登录失败，请重试'
+        })
+        // 确保机器人处于离线状态
+        bot.offline()
       }
-
-      if (cookies) {
-        bot.http.setCookies(cookies)
-        const { nickname, isValid } = await bot.http.getMyInfo()
-        if (isValid) {
-          logger.info(`[${bot.selfId}] Logged in using cached cookie. Welcome, ${nickname}!`)
-          bot.username = nickname // 此处赋值现在是合法的
-        } else {
-          logger.warn(`[${bot.selfId}] Cached cookie is invalid. Re-login is required.`);
-          cookies = null
-        }
-      }
-
-      if (!cookies) {
-        logger.info(`[${botConfig.selfId}] No valid cookie found, starting QR code login...`)
-        const qrData = await bot.http.getQrCodeData()
-        if (!qrData) throw new Error('Failed to get login QR code.')
-
-        logger.info(`[${bot.selfId}] Please scan the QR code to log in:`)
-        qrcode.generate(qrData.url, { small: true })
-
-        const endTime = Date.now() + 180 * 1000
-        while (Date.now() < endTime) {
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          const result = await bot.http.pollQrCodeStatus(qrData.qrcode_key)
-
-          logger.debug(`[${bot.selfId}] Polling status: ${result.status} - ${result.message}`)
-
-          if (result.status === 'success' && result.cookies) {
-            logger.info(`[${bot.selfId}] Login successful.`)
-            cookies = result.cookies
-            break
-          }
-          if (result.status === 'expired') {
-            throw new Error('QR code expired or login failed.')
-          }
-        }
-
-        if (!cookies) {
-          throw new Error('QR code login timed out.')
-        }
-
-        await fs.writeFile(sessionFile, JSON.stringify(cookies, null, 2))
-        logger.info(`[${botConfig.selfId}] Cookie saved to local file.`)
-
-        bot.http.setCookies(cookies)
-        const { nickname } = await bot.http.getMyInfo()
-        logger.info(`[${botConfig.selfId}] QR code login successful. Welcome, ${nickname}!`)
-        bot.username = nickname // 此处赋值现在是合法的
-      }
-
-      await bot.start()
-      this.bots.push(bot)
-      bot.online()
     } catch (error) {
-      logger.error(`[${botConfig.selfId}] Bot startup failed: %o`, error)
+      this.service.logInfo(`[${botConfig.selfId}] 机器人启动失败，错误详情: %o`, error)
+      this.service.updateStatus(botConfig.selfId, {
+        status: 'error',
+        message: `启动失败: ${error.message || '未知错误'}`
+      })
       bot.offline()
     }
   }
