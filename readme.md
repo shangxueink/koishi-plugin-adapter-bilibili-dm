@@ -36,7 +36,7 @@ Bilibili 私信适配器 for Koishi
 
 *   接入需要账号的 **UID**。
 *   需要登录 Bilibili 获取认证信息才能正常发送消息。
-*   
+
 <details>
 <summary>点击此展开 APP扫码方法</summary>
 
