@@ -1,3 +1,4 @@
+<!-- external/adapter-bilibili-dm/client/settings.vue -->
 <template>
   <div class="bilibili-dm-settings">
     <!-- 只有当 data 有值时才渲染 k-comment -->
@@ -75,6 +76,7 @@ const qrCodeExpiryTime = ref<number | null>(null)
 const local = inject('manager.settings.local', ref({ name: '' })) as any
 //  const config = inject('manager.settings.config', ref({})) as any
 //  const current = inject('manager.settings.current', ref({})) as any
+
 /*
 console.group("==================== Bilibili DM Plugin Debug ====================")
 // 确保 local.value 存在，再访问 name 属性
@@ -169,7 +171,8 @@ function getCommentType(status?: string) {
 <style lang="scss" scoped>
 .bilibili-dm-settings {
   padding: 0;
-  
+  margin-top: -1rem; // 顶部间距
+  margin-bottom: 0rem; // 底部间距
   .qrcode-container {
     position: relative;
     display: inline-block;
