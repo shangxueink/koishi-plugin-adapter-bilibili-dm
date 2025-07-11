@@ -30,6 +30,7 @@ Bilibili 私信适配器 for Koishi
 
 获取到您的 UID 后，将其填入 Koishi 插件配置项中，然后启用插件即可。
 
+---
 
 **重要提示：**
 
@@ -38,6 +39,7 @@ Bilibili 私信适配器 for Koishi
 *   
 <details>
 <summary>点击此展开 APP扫码方法</summary>
+
 *   **APP扫码获取方法：**
     [![APP扫码获取UID](https://i0.hdslb.com/bfs/openplatform/d3f604c1b732ff83f0874ee89027dda8e4c3031a.png)](https://i0.hdslb.com/bfs/openplatform/d3f604c1b732ff83f0874ee89027dda8e4c3031a.png)
 </details>
