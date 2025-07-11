@@ -1,3 +1,4 @@
+//  src\service.ts
 import { Context, Logger } from 'koishi'
 import { BilibiliDmBot } from './bot'
 import { BotStatus } from './index'

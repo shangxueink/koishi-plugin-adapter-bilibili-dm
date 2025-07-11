@@ -1,5 +1,6 @@
 <template>
   <div class="bilibili-dm-settings">
+    <!-- 只有当 data 有值时才渲染 k-comment -->
     <k-comment v-if="data" :type="getCommentType(data.status)">
       <template v-if="data.status === 'offline'">
         <p>机器人离线</p>
@@ -54,20 +55,16 @@
       </template>
     </k-comment>
     
+    <!-- 当 data 为 null 时，显示加载中或者不显示任何内容 -->
     <div v-else>
-      <p>加载中...</p>
+      <!-- 不渲染任何东西 -->
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
-import { send, store } from '@koishijs/client'
-
-// 获取插件配置和当前机器人 ID
-const props = defineProps<{
-  data: any
-}>()
+import { computed, ref, watch, onMounted, onUnmounted, inject } from 'vue'
+import { store, send } from "@koishijs/client"; 
 
 // 二维码状态
 const qrCodeExpired = ref(false)
@@ -75,18 +72,36 @@ const qrCodeLoading = ref(false)
 const qrCodeTimer = ref<number | null>(null)
 const qrCodeExpiryTime = ref<number | null>(null)
 
-// 获取状态数据
+const local = inject('manager.settings.local', ref({ name: '' })) as any
+//  const config = inject('manager.settings.config', ref({})) as any
+//  const current = inject('manager.settings.current', ref({})) as any
+/*
+console.group("==================== Bilibili DM Plugin Debug ====================")
+// 确保 local.value 存在，再访问 name 属性
+console.log("Injecting 'manager.settings.local' name:", local.value?.name)
+console.log("Koishi Client Store:", store) // 打印整个 store 对象
+console.groupEnd()
+*/
+
+// 插件的预期名称，根据 package.json
+const PLUGIN_NAME = 'koishi-plugin-adapter-bilibili-dm'; 
+
 const data = computed(() => {
-  console.log('当前store:', store)
-  // 添加调试信息，查看store中是否有bilibili-dm数据
-  if ((store as any)['bilibili-dm']) {
-    console.log('bilibili-dm数据:', (store as any)['bilibili-dm'])
-    return (store as any)['bilibili-dm']
-  } else {
-    console.warn('store中没有bilibili-dm数据')
-    return null
+  // 名称不匹配，返回 null，阻止组件渲染
+  if (!local.value || local.value.name !== PLUGIN_NAME) {
+    console.warn(`[Bilibili DM] 当前插件名称 '${local.value?.name}' 不匹配预期 '${PLUGIN_NAME}'，跳过数据加载。`);
+    return null;
   }
-})
+  
+  // 名称匹配，从 store 中获取 bilibili-dm 数据
+  const bilibiliDmData = (store as any)['bilibili-dm'];
+  if (!bilibiliDmData) {
+    console.warn('[Bilibili DM] 插件名称匹配，但 store 中没有找到 "bilibili-dm" 数据。');
+  } else {
+    console.log('[Bilibili DM] 成功从 store 获取 "bilibili-dm" 数据:', bilibiliDmData);
+  }
+  return bilibiliDmData;
+});
 
 // 监听状态变化
 watch(() => data.value?.status, (newStatus: string | undefined, oldStatus: string | undefined) => {
@@ -97,7 +112,7 @@ watch(() => data.value?.status, (newStatus: string | undefined, oldStatus: strin
     // 如果从qrcode状态变为error状态，可能是二维码过期
     qrCodeExpired.value = true
   }
-})
+}, { immediate: true }) // 立即执行一次，以处理初始状态
 
 // 设置二维码过期计时器（二维码通常有效期为3分钟）
 function startQrCodeExpiryTimer() {

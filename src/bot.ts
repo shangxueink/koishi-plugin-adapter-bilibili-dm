@@ -1,3 +1,4 @@
+//  src\bot.ts
 import { Bot, Context, h, Fragment } from 'koishi'
 import { PrivateMessage } from './types'
 import { BotConfig } from './schema'

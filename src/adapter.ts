@@ -1,4 +1,5 @@
 
+//  src\adapter.ts
 import { BotConfig, PluginConfig } from './schema'
 import { BilibiliService } from './service'
 import { Adapter, Context } from 'koishi'

@@ -1,5 +1,4 @@
-
-
+//  src\index.ts
 import { Config, PluginConfig, BotConfig } from './schema'
 import { DataService } from '@koishijs/plugin-console'
 import { BilibiliDmAdapter } from './adapter'
@@ -16,12 +15,13 @@ export const inject = ['http', 'server', 'console']
 export const filter = false
 export { Config }
 export const usage = `
+---
+
+<p>Bilibili Direct Message Adapter for Koishi</p>
+<p>➣ <a href="https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/tree/main" target="_blank" rel="noopener noreferrer">点我查看项目地址</a></p>
 
 ---
 
-Bilibili Direct Message Adapter for Koishi
-
----
 `
 
 export interface BotStatus {
@@ -29,6 +29,7 @@ export interface BotStatus {
   selfId: string
   image?: string
   message?: string
+  pluginName?: string;
 }
 
 export type { BotLoginStatus } from './service'

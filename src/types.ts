@@ -1,3 +1,4 @@
+//  src\types.ts
 export interface BiliApiResponse<T> {
   code: number
   message: string

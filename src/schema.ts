@@ -1,3 +1,4 @@
+//  src\schema.ts
 import { Schema } from 'koishi'
 
 export interface BotConfig {
