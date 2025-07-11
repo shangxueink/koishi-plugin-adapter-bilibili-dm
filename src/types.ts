@@ -17,7 +17,7 @@ export interface PrivateMessage {
   msg_seqno: number
   timestamp: number
   at_uids: number[] | null
-  msg_key: number
+  msg_key: string
   msg_status: number // 0: normal, 1: withdrawn
   notify_code: string
   new_face_version: number

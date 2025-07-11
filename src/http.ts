@@ -1,5 +1,5 @@
 //  src\http.ts
-import { Context, Quester } from 'koishi'
+import { Context, Logger, Quester } from 'koishi'
 import { v4 as uuidv4 } from 'uuid'
 import { createHash } from 'node:crypto'
 import {
@@ -206,6 +206,36 @@ export class HttpClient {
   }
   // #endregion
 
+  async getUser(userId: string): Promise<{ nickname: string, avatar: string } | null> {
+    try {
+      const baseParams = { mid: userId };
+      // 使用已有的 WBI 签名方法
+      const signedParams = await this.signWithWbi(baseParams);
+
+      interface UserInfoResponseData {
+        name: string;
+        face: string;
+      }
+      const res = await this.http.get<BiliApiResponse<UserInfoResponseData>>(
+        'https://api.bilibili.com/x/space/wbi/acc/info',
+        { params: { ...baseParams, ...signedParams } }
+      )
+
+      if (res.code === 0 && res.data) {
+        return {
+          nickname: res.data.name,
+          avatar: res.data.face,
+        }
+      }
+
+      this.ctx.logger.warn(`获取B站用户 ${userId} 信息失败: ${res.message} (Code: ${res.code})`)
+      return null
+    } catch (error) {
+      this.ctx.logger.error(`获取B站用户 ${userId} 信息时发生网络错误:`, error)
+      return null
+    }
+  }
+
   // #region Private Message API
   async getNewSessions(begin_ts: number): Promise<NewSessionsData | null> {
     // this.logInfo(`正在轮询自时间戳 ${begin_ts} 以来的新会话`)
@@ -341,7 +371,7 @@ export class HttpClient {
         }
       };
 
-      const res = await this.http.post<BiliApiResponse<{ msg_key: number }>>(
+      const res = await this.http.post<BiliApiResponse<{ msg_key: string }>>(
         apiUrl,
         formPayload,
         requestConfig

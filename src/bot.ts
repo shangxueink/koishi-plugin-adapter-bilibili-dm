@@ -163,11 +163,11 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
     return sentMessageIds
   }
 
-  private adaptMessage(msg: PrivateMessage, sessionType: number, talkerId: number) {
+  private async adaptMessage(msg: PrivateMessage, sessionType: number, talkerId: number) {
     if (msg.sender_uid.toString() === this.selfId) return
 
     // 检查消息ID是否已经处理过，如果是，则跳过
-    const msgId = msg.msg_key.toString()
+    const msgId = msg.msg_key
     if (this._processedMsgIds.has(msgId)) {
       this.logInfo(`跳过已处理的消息: ${msgId}`)
       return
@@ -206,6 +206,13 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
     }
 
     if (!contentFragment) return
+    this.logInfo(`正在获取用户昵称头像`)
+    let userInfo
+    try {
+      userInfo = await this.http.getUser(msg.sender_uid.toString());
+    } catch (e) {
+      this.logInfo(`头像昵称信息获取失败`)
+    }
 
     const session = this.session({
       type: 'message',
@@ -218,14 +225,17 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
       },
       user: {
         id: msg.sender_uid.toString(),
+        name: userInfo.nickname,
+        username: userInfo.nickname,
+        avatar: userInfo.avatar,
       },
       message: {
-        id: msg.msg_key.toString(),
+        id: msg.msg_key,
         elements: h.normalize(contentFragment),
         content: h.normalize(contentFragment).join(''),
         timestamp: msg.timestamp * 1000,
         quote: msg.msg_status === 1 ? {
-          id: msg.msg_key.toString(),
+          id: msg.msg_key,
           content: '该消息已被发送者撤回',
           timestamp: msg.timestamp * 1000,
           user: { id: msg.sender_uid.toString() }
@@ -241,7 +251,7 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
         timestamp: Date.now(),
         channel: { id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`, type: sessionType === 1 ? 1 : 0 },
         user: { id: msg.sender_uid.toString() },
-        message: { id: msg.msg_key.toString() }
+        message: { id: msg.msg_key }
       }))
     } else {
       this.dispatch(session)
