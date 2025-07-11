@@ -7,7 +7,9 @@ import { BilibiliDmBot } from './bot'
 
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+
 const logger = new Logger('adapter-bilibili-dm');
+
 export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
   static immediate = true
   private service: BilibiliService
@@ -22,13 +24,8 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
     // 记录适配器初始化信息
     this.service.logInfo(`[${this.config.selfId}] 适配器初始化，selfId: ${this.config.selfId}`)
 
-    // 确保在构造函数完成后立即调用fork方法
-    ctx.setTimeout(() => {
-      this.service.logInfo(`[${this.config.selfId}] 延迟调用fork方法，确保正确初始化`)
-      this.fork().catch(err => {
-        this.logger.error(`[${this.config.selfId}] fork方法执行失败: ${err.message}`)
-      })
-    }, 100)
+    // 注意：fork方法现在由index.ts中的ready事件处理器调用，这里不再重复调用
+    // 这样可以避免重复初始化导致的日志重复和session重复下发问题
 
     // 路由，提供给前端获取状态
     ctx.server.get('/bilibili-dm/status', async (ctx) => {
@@ -101,9 +98,6 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
   }
 
   async startBot(botConfig: BotConfig) {
-    // 确保使用正确的selfId
-    logger.info(`[${botConfig.selfId}] 开始startBot过程，使用selfId: ${botConfig.selfId}`)
-
     // 创建机器人实例，确保使用正确的selfId
     const bot = new BilibiliDmBot(this.ctx, {
       ...botConfig,

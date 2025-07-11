@@ -195,6 +195,13 @@ export class HttpClient {
   }
 
   async getMyInfo(): Promise<{ nickname: string, avatar: string, isValid: boolean }> {
+    // 如果插件已停用，直接返回无效状态
+    if (this.isDisposed) {
+      this.logInfo(`[${this.selfId}] HttpClient 实例已停用，无法获取用户信息。`);
+      this.setCookieVerified(false);
+      return { nickname: '', avatar: '', isValid: false };
+    }
+
     try {
       this.logInfo(`[${this.selfId}] 正在验证cookie有效性，请求用户信息...`);
       const res = await this.http.get<BiliApiResponse<MyInfoData>>('https://api.bilibili.com/x/space/myinfo')
@@ -278,6 +285,7 @@ export class HttpClient {
 
   // #region Private Message API
   async getNewSessions(begin_ts: number): Promise<NewSessionsData | null> {
+    // 确保在执行任何网络请求前检查
     if (this.isDisposed) {
       return null
     }
@@ -302,12 +310,16 @@ export class HttpClient {
       logger.warn(`[${this.selfId}] 轮询新会话失败，错误码: ${res.code}, 错误信息: ${res.message}`)
       return null
     } catch (error) {
-      logger.error(`[${this.selfId}] 轮询新会话时发生网络错误:`, error)
+      logger.warn(`[${this.selfId}] 轮询新会话时发生网络错误:`, error)
       return null
     }
   }
 
   async fetchSessionMessages(talker_id: number, session_type: number, begin_seqno: number): Promise<SessionMessagesData | null> {
+    // 确保在执行任何网络请求前检查
+    if (this.isDisposed) {
+      return null;
+    }
     // 检查cookie是否已验证
     if (!this.cookieVerified) {
       logger.warn(`[${this.selfId}] 获取消息失败: 未设置cookie或cookie无效`)
@@ -348,6 +360,10 @@ export class HttpClient {
   }
 
   async updateAck(talker_id: number, session_type: number, ack_seqno: number): Promise<void> {
+    // 确保在执行任何网络请求前检查
+    if (this.isDisposed) {
+      return;
+    }
     try {
       await this.http.post(
         'https://api.vc.bilibili.com/session_svr/v1/session_svr/update_ack',
@@ -368,6 +384,10 @@ export class HttpClient {
   }
 
   async uploadImage(imageBuffer: Buffer): Promise<UploadImageData | null> {
+    // 确保在执行任何网络请求前检查
+    if (this.isDisposed) {
+      return null;
+    }
     const boundary = `----WebKitFormBoundary${uuidv4().replace(/-/g, '')}`
     const payload = Buffer.concat([
       Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file_up"; filename="image.png"\r\nContent-Type: image/png\r\n\r\n`),
@@ -395,6 +415,10 @@ export class HttpClient {
   }
 
   async sendMessage(senderUid: number, receiverId: number, msgContent: string, msgType: 1 | 2): Promise<boolean> {
+    // 确保在执行任何网络请求前检查
+    if (this.isDisposed) {
+      return false;
+    }
     const msgObject = {
       sender_uid: senderUid,
       receiver_id: receiverId,

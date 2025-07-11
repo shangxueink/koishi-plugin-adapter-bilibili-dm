@@ -3,7 +3,9 @@ import { Bot, Context, h, Fragment, Logger } from 'koishi'
 import { PrivateMessage } from './types'
 import { BotConfig } from './schema'
 import { HttpClient } from './http'
+
 const logger = new Logger('adapter-bilibili-dm');
+
 export class BilibiliDmBot extends Bot<Context, BotConfig> {
   public readonly http: HttpClient
   private logInfo: (...args: any[]) => void
@@ -39,7 +41,6 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
       selfId: this.selfId // 确保使用当前机器人的selfId
     };
 
-    logger.info(`[${this.selfId}] 创建BilibiliDmBot实例，selfId: ${this.selfId}`)
     this.http = new HttpClient(this.ctx, botConfig)
     this._lastPollTs = (Date.now() - 20 * 1000) * 1000
 
@@ -78,7 +79,6 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
   async stop() {
     this.logInfo(`[${this.selfId}] 正在停止机器人...`)
     await super.stop()
-    this.logInfo(`[${this.selfId}] 机器人已停止`)
   }
 
   private startPolling(): void {
@@ -117,6 +117,7 @@ export class BilibiliDmBot extends Bot<Context, BotConfig> {
 
     this.logInfo(`[${this.selfId}] 轮询定时器设置完成`)
   }
+
   private async poll() {
     // 如果 bot 不是 online 状态，则不进行轮询
     // 这可以作为一道额外的保险，防止在停用过程中执行

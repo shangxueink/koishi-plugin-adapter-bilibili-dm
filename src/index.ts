@@ -19,13 +19,14 @@ export const usage = `
 ---
 
 <p>Bilibili Direct Message Adapter for Koishi</p>
-<p>➣ <a href="https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/tree/main" target="_blank" rel="noopener noreferrer">点我查看项目地址</a></p>
+<p>➣ <a href="https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/tree/main?tab=readme-ov-file#koishi-plugin-adapter-bilibili-dm" target="_blank">点我查看项目地址</a></p>
 
 ---
 
 `
 
 const logger = new Logger('adapter-bilibili-dm');
+
 export interface BotStatus {
   status: 'init' | 'qrcode' | 'continue' | 'success' | 'error' | 'offline'
   selfId: string
@@ -166,7 +167,6 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
       this.currentBot = selfId
 
       service.logInfo(`[${selfId}] 收到前端登录请求，前端传入的selfId: ${selfId}，配置中的selfId: ${config.selfId}，当前服务ID: ${this.serviceId}`)
-      service.logInfo(`[${selfId}] 收到前端登录请求，前端传入的selfId: ${selfId}，配置中的selfId: ${config.selfId}，当前服务ID: ${this.serviceId}`)
       service.logInfo(`[${selfId}] 当前机器人列表: ${ctx.bots.map(bot => `${bot.platform}:${bot.selfId}`).join(', ')}`)
 
       // 更新状态为初始化
@@ -189,7 +189,6 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
       // 检查是否存在cookie文件，如果存在则删除
       try {
         if (existsSync(sessionFile)) {
-          service.logInfo(`[${selfId}] 删除旧的cookie文件: ${sessionFile}`)
           service.logInfo(`[${selfId}] 删除旧的cookie文件: ${sessionFile}`)
           await fs.unlink(sessionFile)
         }

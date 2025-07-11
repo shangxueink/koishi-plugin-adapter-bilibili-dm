@@ -148,7 +148,7 @@ export class BilibiliService {
                         bot.user.nick = userInfo.nickname
                         bot.user.avatar = userInfo.avatar
 
-                        // 在终端输出欢迎消息
+                        // 在终端输出欢迎消息（只输出一次）
                         logger.info(`[${selfId}] 已使用缓存登录，欢迎回来 ${userInfo.nickname}`)
 
                         // 确保cookie设置成功后再启动机器人
@@ -164,13 +164,6 @@ export class BilibiliService {
                         // 启动机器人
                         await bot.start()
                         bot.online()
-
-                        // 手动触发一次状态更新，确保前端能收到最新状态
-                        this.ctx.setTimeout(() => {
-                            const eventName = `bilibili-dm-${selfId}/status-update`;
-                            this.ctx.emit(eventName as any, this.status[selfId])
-                            this.logInfo(`[${selfId}] 手动触发状态更新事件，确保前端收到登录成功状态`)
-                        }, 500)
 
                         return true
                     } else {
