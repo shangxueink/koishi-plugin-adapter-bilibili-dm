@@ -25,7 +25,9 @@ export class BilibiliService {
 
         ctx.on('dispose', () => {
             this.isDisposed = true
-            loggerInfo('正在关闭连接 Bilibili ...')
+            loggerInfo(`[${this.config.selfId}] 正在关闭连接 Bilibili ...`)
+            delete this.status[this.config.selfId];
+            logInfo(`[${this.config.selfId}] 已从服务状态中移除`);
         })
     }
 

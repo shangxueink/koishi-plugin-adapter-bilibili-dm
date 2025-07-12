@@ -8,10 +8,10 @@ import { v4 as uuidv4 } from 'uuid'
 import { createHash } from 'node:crypto'
 
 const MIXIN_KEY_ENCODE_TABLE = [
-  46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
-  33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
-  61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11,
-  36, 20, 34, 44, 52
+  46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
+  27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
+  37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4,
+  22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52
 ];
 
 export class HttpClient {
@@ -27,19 +27,11 @@ export class HttpClient {
   private selfId: string
   private cookieVerified: boolean = false
 
-  /**
-   * 安全执行HTTP请求的通用方法，处理上下文停用和错误情况
-   * @param requestFn 要执行的HTTP请求函数
-   * @param errorMessage 错误时的日志消息
-   * @param defaultValue 错误时返回的默认值
-   * @returns 请求结果或默认值
-   */
   private async safeRequest<T>(
     requestFn: () => Promise<T>,
     errorMessage: string,
     defaultValue: T
   ): Promise<T> {
-    // 如果插件已停用，直接返回默认值
     if (this.isDisposed) {
       logInfo(`[${this.selfId}] HttpClient 实例已停用，跳过HTTP请求。`);
       return defaultValue;
@@ -47,7 +39,7 @@ export class HttpClient {
 
     try {
       try {
-        // 尝试执行一个简单的操作来检查上下文是否活跃
+        // 尝试执行一个简单的操作来检查
         this.ctx.setTimeout(() => { }, 0);
       } catch (err) {
         if (err.code === 'INACTIVE_EFFECT') {
@@ -57,13 +49,13 @@ export class HttpClient {
         }
       }
 
-      // 再次检查是否已停用
+      // 再次检查
       if (this.isDisposed) {
         logInfo(`[${this.selfId}] HttpClient 实例已停用，跳过HTTP请求。`);
         return defaultValue;
       }
 
-      // 执行实际的HTTP请求
+      // 执行实际请求
       try {
         return await requestFn();
       } catch (httpError) {
@@ -136,10 +128,10 @@ export class HttpClient {
   }
 
   private async getWbiKeys(): Promise<WbiKeys> {
-    // 如果keys有效，直接返回
+    // keys有效
     if (this.wbiKeys && this.wbiKeysExpire > Date.now()) return this.wbiKeys
 
-    // 如果已经有一个请求在获取keys，等待该请求完成
+    // 已经有一个请求在获取keys，等待
     if (this.wbiKeysFetchPromise) {
       return this.wbiKeysFetchPromise;
     }
@@ -456,7 +448,7 @@ export class HttpClient {
   // #endregion
 
   /**
-   * ctx.http.file 的通用方法，处理上下文停用和错误情况
+   * 当做 ctx.http.file
    * @param url 文件URL
    * @param errorMessage 错误时的日志消息
    * @returns 文件数据或null

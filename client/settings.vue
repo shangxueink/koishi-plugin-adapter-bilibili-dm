@@ -97,14 +97,12 @@ const data = computed(() => {
     return null;
   }
   
-  // 获取当前配置的selfId
   const currentSelfId = config.value?.selfId;
   if (!currentSelfId) {
     console.warn('[Bilibili DM] 无法获取当前配置的selfId');
     return null;
   }
   
-  // 构造唯一的服务ID
   const serviceId = `bilibili-dm-${currentSelfId}`;
   console.log(`[Bilibili DM] 尝试从服务 "${serviceId}" 获取数据，当前selfId: ${currentSelfId}`);
 
@@ -115,11 +113,9 @@ const data = computed(() => {
     return null;
   }
 
-  // 获取当前selfId的状态数据
   const instanceData = serviceData[currentSelfId];
   if (!instanceData) {
     console.log('[Bilibili DM] 未找到selfId为', currentSelfId, '的状态数据，创建初始状态');
-    // 返回一个初始状态，而不是null，这样UI会显示
     return {
       status: 'offline',
       selfId: currentSelfId,
@@ -127,7 +123,6 @@ const data = computed(() => {
     };
   }
 
-  // 确保状态对象包含正确的selfId
   if (instanceData && (!instanceData.selfId || instanceData.selfId !== currentSelfId)) {
     console.log('[Bilibili DM] 状态对象的selfId不正确，修正为:', currentSelfId);
     instanceData.selfId = currentSelfId;
@@ -187,17 +182,14 @@ function startLogin(selfId: string) {
   qrCodeExpired.value = false
   qrCodeLoading.value = true
   
-  // 使用包含selfId的唯一事件名称
   const loginEventName = `bilibili-dm-${selfId}/start-login`;
   console.log(`[Bilibili DM] 发送登录请求到事件: ${loginEventName}, selfId: ${selfId}, config.value?.selfId: ${config.value?.selfId}`);
   
-  // 确保传递正确的selfId
   send(loginEventName as any, { 
     selfId: selfId || config.value?.selfId 
   })
 }
 
-// 根据状态获取评论类型
 function getCommentType(status?: string) {
   if (!status) return 'warning'
   if (status === 'init' || status === 'continue') return 'warning'

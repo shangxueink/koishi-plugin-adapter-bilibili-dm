@@ -12,6 +12,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   private readonly _maxCacheSize: number
   private _cleanupFunctions: Array<() => void> = []
   public readonly pluginConfig: PluginConfig
+  private isStopping: boolean = false;
 
   constructor(public ctx: Context, config: PluginConfig) {
     super(ctx, config, 'bilibili')
@@ -53,6 +54,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   }
 
   async stop() {
+    this.isStopping = true; // 停止
     logInfo(`[${this.selfId}] 正在停止机器人...`)
     logInfo(`[${this.selfId}] 执行清理函数，数量: ${this._cleanupFunctions.length}`)
     for (const cleanup of this._cleanupFunctions) {
@@ -77,11 +79,11 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       logInfo(`[${this.selfId}] 警告：启动轮询时cookie未验证，将延迟启动轮询`)
       try {
         this.ctx.setTimeout(() => {
-          if (!this.http.isDisposed) {
+          if (!this.http.isDisposed && !this.isStopping) {
             logInfo(`[${this.selfId}] 延迟后再次尝试启动轮询...`)
             this.startPolling()
           } else {
-            logInfo(`[${this.selfId}] 插件已停用，跳过延迟后的轮询启动`)
+            logInfo(`[${this.selfId}] 插件已停用或正在停止，跳过延迟后的轮询启动`)
           }
         }, 5000)
       } catch (err) {
@@ -98,10 +100,11 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     logInfo(`[${this.selfId}] cookie已验证，开始设置轮询定时器`)
 
     try {
-      if (!this.http.isDisposed) {
+      // 只有当机器人在线且没有停止时才设置定时器
+      if (!this.http.isDisposed && this.online && !this.isStopping) {
         const pollInterval = this.pluginConfig.pollInterval;
         const intervalId = this.ctx.setInterval(() => {
-          if (this.online) {
+          if (this.online && !this.isStopping) { // 检查
             this.poll().catch(err => {
               if (err.code === 'INACTIVE_EFFECT') {
                 logInfo(`[${this.selfId}] 关闭过程中，跳过轮询。`)
@@ -109,6 +112,14 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
               }
               loggerError(`[${this.selfId}] 轮询过程中发生错误: `, err)
             })
+          } else {
+            logInfo(`[${this.selfId}] 机器人不在线或正在停止，停止轮询定时器回调。`)
+            try {
+              intervalId();
+              logInfo(`[${this.selfId}] 轮询定时器在回调中被清除，因为机器人不在线或正在停止。`);
+            } catch (err) {
+              loggerError(`[${this.selfId}] 在回调中清除轮询定时器时出错: `, err);
+            }
           }
         }, pollInterval)
 
@@ -120,6 +131,8 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
             loggerError(`[${this.selfId}] 清除轮询定时器时出错: `, err)
           }
         })
+      } else {
+        logInfo(`[${this.selfId}] 机器人不在线或正在停止，跳过设置轮询定时器。`)
       }
     } catch (err) {
       loggerError(`[${this.selfId}] 设置轮询定时器时出错: `, err)
@@ -129,14 +142,20 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   }
 
   private async poll() {
-    if (!this.online) {
-      logInfo(`[${this.selfId}] 机器人不在线，跳过轮询`)
+    if (!this.online || this.isStopping) {
+      logInfo(`[${this.selfId}] 机器人不在线或正在停止，跳过轮询`)
       return
     }
 
     try {
       const pollTs = Date.now() * 1000
       const newSessionsData = await this.http.getNewSessions(this._lastPollTs)
+
+      if (this.isStopping) {
+        logInfo(`[${this.selfId}] 机器人正在停止，在获取会话数据后跳过后续轮询处理。`)
+        return
+      }
+
       this._lastPollTs = pollTs
 
       if (!newSessionsData) {
@@ -147,6 +166,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
         return
       }
 
+      // 一般是自bot自己发送的消息
       logInfo(`[${this.selfId}] 轮询到 ${newSessionsData.session_list.length} 个会话`)
 
       for (const session of newSessionsData.session_list) {
@@ -157,6 +177,11 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
             session.session_type,
             session.ack_seqno,
           )
+
+          if (this.isStopping) {
+            logInfo(`[${this.selfId}] 机器人正在停止，在获取消息数据后跳过后续轮询处理。`)
+            return
+          }
 
           if (messageData?.messages) {
             logInfo(`[${this.selfId}] 获取到 ${messageData.messages.length} 条消息`)

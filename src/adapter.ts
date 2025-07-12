@@ -40,7 +40,6 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
 
   async start() {
     logInfo('Bilibili 私信适配器启动中...')
-    // 确保数据目录存在
     const dataDir = path.resolve(this.ctx.baseDir, 'data', 'adapter-bilibili-dm')
     await fs.mkdir(dataDir, { recursive: true })
     logInfo(`数据目录已确保存在: ${dataDir}`)
@@ -89,7 +88,7 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
     }
 
     logInfo(`[${selfId}] 直接启动机器人...`)
-    await this.startBot(this.config)
+    await this.startBot(actualConfig)
 
     return this
   }

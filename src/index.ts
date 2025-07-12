@@ -13,6 +13,8 @@ export let loggerError: (message: string, ...args: any[]) => void;
 export let loggerInfo: (message: string, ...args: any[]) => void;
 export let logInfo: (message: string, ...args: any[]) => void;
 
+let isConsoleEntryAdded = false;
+
 export const name = "adapter-bilibili-dm"
 export const inject = ["http", "server", "console", "logger"]
 export const reusable = true
@@ -141,12 +143,6 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
       }
     })
 
-    // 前端组件
-    ctx.console.addEntry({
-      dev: resolve(__dirname, '../client/index.ts'),
-      prod: resolve(__dirname, '../dist'),
-    })
-
     // 前端发来的登录请求
     const loginEventName = `bilibili-dm-${config.selfId}/start-login`;
     logInfo(`[${config.selfId}] 注册登录事件监听器: ${loginEventName}`)
@@ -240,7 +236,16 @@ export function apply(ctx: Context, config: PluginConfig) {
 
     // 创建服务
     const service = new BilibiliService(ctx, config)
+
     ctx.bilibili_dm_service = service
+
+    if (!isConsoleEntryAdded) {
+      isConsoleEntryAdded = true;
+      ctx.console.addEntry({
+        dev: resolve(__dirname, '../client/index.ts'),
+        prod: resolve(__dirname, '../dist'),
+      })
+    }
 
     ctx.plugin({
       name: `bilibili-launcher-${config.selfId}`,
@@ -256,31 +261,32 @@ export function apply(ctx: Context, config: PluginConfig) {
     })
 
     ctx.on('dispose', () => {
+      isConsoleEntryAdded = false;
       logInfo(`[${config.selfId}] 插件正在停用，执行清理操作`)
 
       try {
         // 标记服务为已停用状态
         service.markAsDisposed()
 
-        const adapters = ctx.bots
-          .filter(bot => bot.platform === 'bilibili')
-          .map(bot => bot.ctx.registry.get(BilibiliDmAdapter))
-          .filter(Boolean)
+        // 找到当前插件实例对应的机器人并停止它
+        const botToStop = ctx.bots.find(bot => bot.platform === 'bilibili' && bot.selfId === config.selfId);
 
-        logInfo(`[${config.selfId}] 找到 ${adapters.length} 个需要停止的适配器实例`)
-
-        adapters.forEach(adapter => {
-          if (adapter && adapter.config) {
-            try {
-              logInfo(`[${adapter.config.selfId}] 正在停止适配器...`)
-              adapter.dispose()
-            } catch (err) {
-              ctx.logger.error(`[${adapter.config.selfId}] 停止适配器失败: ${err.message}`)
-            }
+        if (botToStop) {
+          logInfo(`[${config.selfId}] 正在停止当前插件实例对应的机器人: ${botToStop.selfId}`);
+          try {
+            botToStop.stop();
+            botToStop.offline(); // 确保机器人状态为离线
+            logInfo(`[${config.selfId}] 机器人 ${botToStop.selfId} 已停止并设置为离线`);
+            botToStop.dispose(); // 彻底移除机器人实例
+            logInfo(`[${config.selfId}] 机器人 ${botToStop.selfId} 已被彻底移除`);
+          } catch (err) {
+            ctx.logger.error(`[${config.selfId}] 停止机器人 ${botToStop.selfId} 失败: ${err.message}`);
           }
-        })
+        } else {
+          logInfo(`[${config.selfId}] 未找到当前插件实例对应的机器人，无需停止。`);
+        }
 
-        logInfo(`[${config.selfId}] 所有适配器已停止，插件停用完成`)
+        logInfo(`[${config.selfId}] 插件停用完成`);
       } catch (err) {
         ctx.logger.error(`[${config.selfId}] 插件停用过程中发生错误: ${err.message}`)
       }
