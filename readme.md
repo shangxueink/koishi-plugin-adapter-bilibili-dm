@@ -1,8 +1,12 @@
 # koishi-plugin-adapter-bilibili-dm
 
-[![npm](https://img.shields.io/npm/v/koishi-plugin-adapter-bilibili-dm?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-adapter-bilibili-dm)
+[![npm](https://img.shields.io/npm/v/koishi-plugin-adapter-bilibili-dm?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-adapter-bilibili-dm)  [![npm downloads](https://img.shields.io/npm/dm/koishi-plugin-adapter-bilibili-dm)](https://www.npmjs.com/package/koishi-plugin-adapter-bilibili-dm)
+
 
 Bilibili 私信适配器 for Koishi
+
+![preview.gif](https://raw.githubusercontent.com/Roberta001/koishi-plugin-adapter-bilibili-dm/refs/heads/main/screenshots/preview.gif)
+    
 
 ## ✨ 特性
 
@@ -22,9 +26,9 @@ Bilibili 私信适配器 for Koishi
 <summary>点击此展开 UID查看方法</summary>
 
 *   **手机端参考：**
-    [![手机端获取UID](https://i0.hdslb.com/bfs/openplatform/9168ed872d8d132ee32d265b17327bbda5d40588.png)](https://i0.hdslb.com/bfs/openplatform/9168ed872d8d132ee32d265b17327bbda5d40588.png)
+    ![手机端获取UID](https://i0.hdslb.com/bfs/openplatform/9168ed872d8d132ee32d265b17327bbda5d40588.png)
 *   **电脑端参考：**
-    [![电脑端获取UID](https://i0.hdslb.com/bfs/openplatform/b216ed9fd08585fd2b1b7e89cef06618e10553c2.png)](https://i0.hdslb.com/bfs/openplatform/b216ed9fd08585fd2b1b7e89cef06618e10553c2.png)
+    ![电脑端获取UID](https://i0.hdslb.com/bfs/openplatform/b216ed9fd08585fd2b1b7e89cef06618e10553c2.png)
 
 </details>
 
@@ -41,10 +45,10 @@ Bilibili 私信适配器 for Koishi
 <summary>点击此展开 APP扫码方法</summary>
 
 *   **APP扫码获取方法：**
-    [![APP扫码获取UID](https://i0.hdslb.com/bfs/openplatform/d3f604c1b732ff83f0874ee89027dda8e4c3031a.png)](https://i0.hdslb.com/bfs/openplatform/d3f604c1b732ff83f0874ee89027dda8e4c3031a.png)
+    ![APP扫码获取UID](https://i0.hdslb.com/bfs/openplatform/d3f604c1b732ff83f0874ee89027dda8e4c3031a.png)
+
+    ![控制台登录](https://i0.hdslb.com/bfs/openplatform/330ff2dfb8f83d62afbb8ed3ffe4e2acc9c5ed39.png)
 </details>
-
-
 
 ### 图片显示问题
 
@@ -57,6 +61,7 @@ Bilibili 图片设置了 `referrer` 策略。为了在koishi控制台正常显�
 *   [x] **内容限制：** B站私信目前只支持发送文本和已上传至B站的图片内容。
 *   [x] **内容屏蔽：** B站私信存在屏蔽机制，部分敏感内容可能无法成功发送。
 *   [x] **多端同步问题：** 多端消息同步可能存在不一致的情况（例如：电脑端发送消息后，手机端可能无法看到对方回复）。此问题暂未稳定复现。
+*   [ ] **消息延迟：** 发送/接收消息存在 `3 ~ 10` 秒延迟，均为正常现象。
 *   [ ] **消息丢失：** 发送和接收消息时可能存在消息丢失的情况。
 
 ### 待办事项 
@@ -68,7 +73,8 @@ Bilibili 图片设置了 `referrer` 策略。为了在koishi控制台正常显�
 
 ## 🤝 贡献
 
-欢迎提交 Pull Request 或 Issue 来帮助改进此项目。您的贡献将不胜感激！
+欢迎提交 Pull Request 或 Issue 来帮助改进此项目。
+
 
 ## 📄 许可证
 

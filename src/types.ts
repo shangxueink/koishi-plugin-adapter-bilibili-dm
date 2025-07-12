@@ -8,68 +8,81 @@ export interface BiliApiResponse<T> {
 }
 
 // from private_msg.md -> 私信主体对象
+// 私信消息对象
 export interface PrivateMessage {
-  sender_uid: number
-  receiver_type: number // 1: user, 2: group
-  receiver_id: number
-  msg_type: number
-  content: string // JSON string
-  msg_seqno: number
-  timestamp: number
-  at_uids: number[] | null
-  msg_key: string
-  msg_status: number // 0: normal, 1: withdrawn
+  sender_uid: number // 发送者UID
+  receiver_type: number // 接收者类型：1: 用户, 2: 群组
+  receiver_id: number // 接收者ID
+  msg_type: number // 消息类型
+  content: string // 消息内容 (JSON字符串)
+  msg_seqno: number // 消息序列号
+  timestamp: number // 消息时间戳
+  at_uids: number[] | null // @的用户UID列表
+  msg_key: string // 消息唯一键
+  msg_status: number // 消息状态：0: 正常, 1: 撤回
   notify_code: string
   new_face_version: number
 }
 
 // from private_msg.md -> 会话对象
+// 会话信息对象
 export interface SessionInfo {
-  talker_id: number
-  session_type: number
-  ack_seqno: number
-  ack_ts: number
-  session_ts: number
-  unread_count: number
-  last_msg: PrivateMessage | null
-  max_seqno: number
-  is_follow: number
-  is_dnd: number
+  talker_id: number // 会话对象ID (用户UID)
+  session_type: number // 会话类型
+  ack_seqno: number // 已确认的序列号
+  ack_ts: number // 已确认的时间戳
+  session_ts: number // 会话时间戳
+  unread_count: number // 未读消息数量
+  last_msg: PrivateMessage | null // 最后一条消息
+  max_seqno: number // 最大序列号
+  is_follow: number // 是否关注
+  is_dnd: number // 是否免打扰
 }
 
-// Response data for /new_sessions
+// /new_sessions 接口的响应数据
 export interface NewSessionsData {
-  session_list?: SessionInfo[]
-  has_more: number
+  session_list?: SessionInfo[] // 会话列表
+  has_more: number // 是否有更多会话：0: 没有，1: 有
 }
 
-// Response data for /fetch_session_msgs
+// /fetch_session_msgs 接口的响应数据
 export interface SessionMessagesData {
-  messages?: PrivateMessage[]
-  has_more: number
-  min_seqno: number
-  max_seqno: number
+  messages?: PrivateMessage[] // 消息列表
+  has_more: number // 是否有更多消息：0: 没有，1: 有
+  min_seqno: number // 最小序列号
+  max_seqno: number // 最大序列号
 }
 
-// Login related types
-export interface QrCodeData { url: string; qrcode_key: string; }
-export interface QrCodePollResult { status: 'waiting' | 'scanned' | 'success' | 'expired'; message: string; cookies?: Record<string, string>; }
-export interface MyInfoData { name: string; mid: number; face: string; }
+export interface QrCodeData {
+  url: string; // 二维码图片URL
+  qrcode_key: string; // 二维码唯一键
+}
+export interface QrCodePollResult {
+  status: 'waiting' | 'scanned' | 'success' | 'expired';
+  message: string; // 状态消息
+  cookies?: Record<string, string>;
+}
+export interface MyInfoData {
+  name: string;
+  mid: number;
+  face: string;
+}
 
-// WBI keys from /nav endpoint
+// 从 /nav 接口获取的WBI密钥图片信息
 export interface NavWbiImg {
-  img_url: string
-  sub_url: string
+  img_url: string // WBI密钥图片URL
+  sub_url: string // WBI密钥子图片URL
 }
+// WBI密钥
 export interface WbiKeys {
-  img_key: string
-  sub_key: string
+  img_key: string // 图片密钥
+  sub_key: string // 子密钥
 }
 
-// Upload image response
+// 上传图片响应数据
 export interface UploadImageData {
-  image_url: string
-  image_width: number
-  image_height: number
-  img_size?: number
+  image_url: string // 图片URL
+  image_width: number // 图片宽度
+  image_height: number // 图片高度
+  img_size?: number // 图片大小 (字节)
 }

@@ -1,46 +1,34 @@
 
 //  src\adapter.ts
-import { BotConfig, PluginConfig } from './schema'
+import { PluginConfig } from './schema'
 import { BilibiliService } from './service'
-import { Adapter, Context, Logger } from 'koishi'
+import { Adapter, Context } from 'koishi'
 import { BilibiliDmBot } from './bot'
+import { logInfo, loggerError, loggerInfo } from './index'
 
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 
-const logger = new Logger('adapter-bilibili-dm');
-
 export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
   static immediate = true
   private service: BilibiliService
-  private logger = new Logger('BilibiliDmAdapter')
-
   constructor(ctx: Context, public config: PluginConfig) {
     super(ctx)
 
-    // 创建服务
-    this.service = ctx.bilibili_dm_service = new BilibiliService(ctx, config)
+    this.service = ctx.bilibili_dm_service
 
-    // 记录适配器初始化信息
-    this.service.logInfo(`[${this.config.selfId}] 适配器初始化，selfId: ${this.config.selfId}`)
-
-    // 注意：fork方法现在由index.ts中的ready事件处理器调用，这里不再重复调用
-    // 这样可以避免重复初始化导致的日志重复和session重复下发问题
-
-    // 路由，提供给前端获取状态
+    logInfo(`[${this.config.selfId}] 适配器初始化，selfId: ${this.config.selfId}`)
     ctx.server.get('/bilibili-dm/status', async (ctx) => {
       const status = this.service.getStatus()
 
-      // 如果请求中包含selfId参数，只返回该selfId的状态
       const requestedSelfId = ctx.query.selfId as string
       if (requestedSelfId && status[requestedSelfId]) {
-        this.service.logInfo(`收到前端状态数据请求，返回selfId=${requestedSelfId}的数据`)
+        logInfo(`收到前端状态数据请求，返回selfId=${requestedSelfId}的数据`)
         ctx.body = { [requestedSelfId]: status[requestedSelfId] }
         return
       }
 
-      this.service.logInfo('收到前端状态数据请求，返回所有数据:', JSON.stringify(status, (key, value) => {
-        // 避免日志中输出过长的图片数据
+      logInfo('收到前端状态数据请求，返回所有数据:', JSON.stringify(status, (key, value) => {
         if (key === 'image' && typeof value === 'string' && value.length > 100) {
           return value.substring(0, 100) + '... [图片数据已截断]'
         }
@@ -50,33 +38,49 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
     })
   }
 
+  async start() {
+    logInfo('Bilibili 私信适配器启动中...')
+    // 确保数据目录存在
+    const dataDir = path.resolve(this.ctx.baseDir, 'data', 'adapter-bilibili-dm')
+    await fs.mkdir(dataDir, { recursive: true })
+    logInfo(`数据目录已确保存在: ${dataDir}`)
+
+    const selfId = this.config.selfId
+    logInfo(`正在启动机器人: ${selfId}`)
+
+    const bot = new BilibiliDmBot(this.ctx, this.config)
+    this.bots.push(bot)
+
+    const sessionFile = path.join(this.ctx.baseDir, 'data', 'adapter-bilibili-dm', `${selfId}.cookie.json`)
+    logInfo(`机器人 ${selfId} 的会话文件路径: ${sessionFile}`)
+
+    // 启动登录流程
+    const loginSuccess = await this.service.startLogin(bot, sessionFile)
+    if (loginSuccess) {
+      logInfo(`机器人 ${selfId} 登录成功。`)
+    } else {
+      logInfo(`机器人 ${selfId} 登录失败。`)
+    }
+  }
+
   async fork(parent?: Context, config?: any, error?: any) {
     const actualConfig = config || this.config
     const selfId = actualConfig.selfId || this.config.selfId
 
-    // 创建机器人配置
-    const botConfig: BotConfig = {
-      selfId: selfId
-    }
+    logInfo(`[${selfId}] 开始fork过程，当前机器人ID: ${selfId}`)
 
-    // 记录当前正在fork的机器人ID
-    this.service.logInfo(`[${selfId}] 开始fork过程，当前机器人ID: ${selfId}`)
-
-    // 检查是否存在缓存文件
-    const sessionFile = path.join(this.ctx.baseDir, 'data', 'adapter-bilibili-dm', `${botConfig.selfId}.cookie.json`)
+    const sessionFile = path.join(this.ctx.baseDir, 'data', 'adapter-bilibili-dm', `${selfId}.cookie.json`)
     const hasCacheFile = await fs.access(sessionFile).then(() => true).catch(() => false)
 
-    this.service.logInfo(`[${selfId}] 开始fork过程，缓存文件存在: ${hasCacheFile}`)
+    logInfo(`[${selfId}] 开始fork过程，缓存文件存在: ${hasCacheFile}`)
 
     if (!hasCacheFile) {
-      // 只有在没有缓存文件时才设置初始"未登录"状态
       this.service.updateStatus(selfId, {
         status: 'offline',
         selfId: selfId,
         message: '机器人未登录，请点击登录按钮'
       })
     } else {
-      // 如果有缓存文件，设置为初始化状态
       this.service.updateStatus(selfId, {
         status: 'init',
         selfId: selfId,
@@ -84,78 +88,85 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
       })
     }
 
-    // 直接启动机器人，不使用延迟
-    this.service.logInfo(`[${selfId}] 直接启动机器人...`)
-    await this.startBot(botConfig)
+    logInfo(`[${selfId}] 直接启动机器人...`)
+    await this.startBot(this.config)
 
-    // 返回this以支持链式调用
     return this
   }
 
   async dispose() {
-    logger.info('正在停止 Bilibili 私信适配器...')
-    await Promise.all(this.bots.map(bot => bot.stop()))
+    logInfo('正在停止 Bilibili 私信适配器...')
+
+    try {
+      if (this.service) {
+        this.service.markAsDisposed()
+        logInfo('适配器正在停止，已标记服务为已停用状态')
+      }
+
+      logInfo(`准备停止 ${this.bots.length} 个机器人实例`)
+      await Promise.all(this.bots.map(async (bot) => {
+        try {
+          logInfo(`正在停止机器人 ${bot.selfId}...`)
+          await bot.stop()
+          logInfo(`机器人 ${bot.selfId} 已停止`)
+        } catch (err) {
+          loggerError(`[${bot.selfId}] 停止机器人 ${bot.selfId} 时出错:`, err)
+        }
+      }))
+
+      logInfo('所有机器人已停止，适配器停止完成')
+    } catch (err) {
+      loggerError(`停止适配器时发生错误: `, err)
+    }
   }
 
-  async startBot(botConfig: BotConfig) {
-    // 创建机器人实例，确保使用正确的selfId
-    const bot = new BilibiliDmBot(this.ctx, {
-      ...botConfig,
-      selfId: botConfig.selfId // 确保selfId正确
-    })
+  async startBot(pluginConfig: PluginConfig) {
+    const bot = new BilibiliDmBot(this.ctx, pluginConfig)
 
-    this.service.logInfo(`[${botConfig.selfId}] 正在启动机器人...`)
+    logInfo(`[${pluginConfig.selfId}] 正在启动机器人...`)
 
-    const sessionFile = path.join(this.ctx.baseDir, 'data', 'adapter-bilibili-dm', `${botConfig.selfId}.cookie.json`)
+    const sessionFile = path.join(this.ctx.baseDir, 'data', 'adapter-bilibili-dm', `${pluginConfig.selfId}.cookie.json`)
     await fs.mkdir(path.dirname(sessionFile), { recursive: true })
 
-    // 检查是否存在缓存文件
     const hasCacheFile = await fs.access(sessionFile).then(() => true).catch(() => false)
 
     if (hasCacheFile) {
       try {
-        // 读取缓存文件并设置cookie
         const cookieData = JSON.parse(await fs.readFile(sessionFile, 'utf8'))
-        this.service.logInfo(`[${botConfig.selfId}] 从缓存文件加载cookie，数据长度: ${JSON.stringify(cookieData).length}`)
+        logInfo(`[${pluginConfig.selfId}] 从缓存文件加载cookie，数据长度: ${JSON.stringify(cookieData).length}`)
         bot.http.setCookies(cookieData)
 
-        // 验证cookie是否有效
         const userInfo = await bot.http.getMyInfo()
         if (userInfo.isValid) {
-          this.service.logInfo(`[${botConfig.selfId}] 缓存cookie有效，用户名: ${userInfo.nickname}`)
-          // 明确设置cookie验证标志
+          logInfo(`[${pluginConfig.selfId}] 缓存cookie有效，用户名: ${userInfo.nickname}`)
           bot.http.setCookieVerified(true)
-          this.service.logInfo(`[${botConfig.selfId}] 已设置cookie验证标志为true`)
+          logInfo(`[${pluginConfig.selfId}] 已设置cookie验证标志为true`)
         } else {
-          this.service.logInfo(`[${botConfig.selfId}] 缓存cookie无效，需要重新登录`)
-          // 确保cookie验证标志为false
+          logInfo(`[${pluginConfig.selfId}] 缓存cookie无效，需要重新登录`)
           bot.http.setCookieVerified(false)
         }
       } catch (error) {
-        this.service.logInfo(`[${botConfig.selfId}] 读取缓存cookie失败: ${error.message}`)
+        loggerError(`[${pluginConfig.selfId}] 读取缓存cookie失败: `, error)
       }
     }
 
     try {
-      // 使用服务进行登录
       const loginSuccess = await this.service.startLogin(bot, sessionFile)
 
       if (loginSuccess) {
-        this.service.logInfo(`[${botConfig.selfId}] 登录成功，添加到机器人列表`)
+        logInfo(`[${pluginConfig.selfId}] 登录成功，添加到机器人列表`)
         this.bots.push(bot)
       } else {
-        // 不抛出错误，而是记录日志并更新状态
-        this.service.logInfo(`[${botConfig.selfId}] 登录失败`)
-        this.service.updateStatus(botConfig.selfId, {
+        logInfo(`[${pluginConfig.selfId}] 登录失败`)
+        this.service.updateStatus(pluginConfig.selfId, {
           status: 'error',
           message: '登录失败，请重试'
         })
-        // 确保机器人处于离线状态
         bot.offline()
       }
     } catch (error) {
-      this.service.logInfo(`[${botConfig.selfId}] 机器人启动失败，错误详情: %o`, error)
-      this.service.updateStatus(botConfig.selfId, {
+      loggerError(`[${pluginConfig.selfId}] 机器人启动失败，错误详情: `, error)
+      this.service.updateStatus(pluginConfig.selfId, {
         status: 'error',
         message: `启动失败: ${error.message || '未知错误'}`
       })

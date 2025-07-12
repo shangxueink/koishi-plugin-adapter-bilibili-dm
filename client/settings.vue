@@ -14,7 +14,7 @@
       </template>
       
       <template v-else-if="data.status === 'init'">
-        <p>正在初始化 Bilibili 客户端...</p>
+        <p>正在登录 Bilibili 客户端，请稍候...</p>
         <k-progress indeterminate />
       </template>
       
@@ -40,7 +40,7 @@
             <k-button @click="startLogin(data.selfId)">刷新二维码</k-button>
           </div>
         </div>
-        <p class="qrcode-tip">请使用 Bilibili APP 扫描二维码登录</p>
+        <p class="qrcode-tip">请在两分钟内扫描二维码并确认登录. . .</p>
         <div class="qrcode-actions">
           <k-button @click="startLogin(data.selfId)" :disabled="qrCodeLoading">
             <template v-if="qrCodeLoading">
@@ -148,7 +148,7 @@ watch(() => data.value?.status, (newStatus: string | undefined, oldStatus: strin
   }
 }, { immediate: true }) // 立即执行一次，以处理初始状态
 
-// 设置二维码过期计时器（二维码通常有效期为3分钟） B站又好像是2分钟？
+// 设置二维码过期计时器（二维码通常有效期为3分钟） B站好像是2分钟？
 function startQrCodeExpiryTimer() {
   clearQrCodeExpiryTimer()
   
@@ -212,7 +212,7 @@ function getCommentType(status?: string) {
 .bilibili-dm-settings {
   padding: 0;
   margin-top: -1rem; // 顶部间距
-  margin-bottom: 0rem; // 底部间距
+  margin-bottom: -1rem; // 底部间距
   .qrcode-container {
     position: relative;
     display: inline-block;
@@ -268,6 +268,7 @@ function getCommentType(status?: string) {
   
   .k-button {
     margin-top: 0.5rem;
+    margin-bottom: 0.8rem;
   }
   
   .k-progress {
