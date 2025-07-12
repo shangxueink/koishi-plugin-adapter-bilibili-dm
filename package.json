@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-adapter-bilibili-dm",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "Bilibili Direct Message Adapter for Koishi\nBilibili 私信适配器",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -29,7 +29,8 @@
     "adapter",
     "chatbot",
     "satori",
-    "bilibili"
+    "bilibili",
+    "私信"
   ],
   "koishi": {
     "description": {

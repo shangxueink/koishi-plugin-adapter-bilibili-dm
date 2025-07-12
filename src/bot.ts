@@ -1,9 +1,9 @@
 //  src\bot.ts
+import { logInfo, loggerError, loggerInfo } from './index'
 import { Bot, Context, h, Fragment } from 'koishi'
 import { PrivateMessage } from './types'
 import { PluginConfig } from './schema'
 import { HttpClient } from './http'
-import { logInfo, loggerError, loggerInfo } from './index'
 
 export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   public readonly http: HttpClient

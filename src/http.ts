@@ -1,13 +1,11 @@
 //  src\http.ts
+import { BiliApiResponse, MyInfoData, QrCodeData, QrCodePollResult, UploadImageData, WbiKeys, NavWbiImg, NewSessionsData, SessionMessagesData } from './types'
+import { logInfo, loggerError, loggerInfo } from './index'
+import { AxiosRequestHeaders } from 'axios'
 import { Context, Quester } from 'koishi'
 import { v4 as uuidv4 } from 'uuid'
+
 import { createHash } from 'node:crypto'
-import { logInfo, loggerError, loggerInfo } from './index'
-import {
-  BiliApiResponse, MyInfoData, QrCodeData,
-  QrCodePollResult, UploadImageData, WbiKeys, NavWbiImg, NewSessionsData, SessionMessagesData
-} from './types'
-import { AxiosRequestHeaders } from 'axios'
 
 const MIXIN_KEY_ENCODE_TABLE = [
   46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,

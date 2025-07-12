@@ -1,10 +1,10 @@
 
 //  src\adapter.ts
-import { PluginConfig } from './schema'
+import { logInfo, loggerError, loggerInfo } from './index'
 import { BilibiliService } from './service'
 import { Adapter, Context } from 'koishi'
+import { PluginConfig } from './schema'
 import { BilibiliDmBot } from './bot'
-import { logInfo, loggerError, loggerInfo } from './index'
 
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'

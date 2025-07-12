@@ -1,13 +1,12 @@
 //  src\service.ts
-import { Context } from 'koishi'
-import { BilibiliDmBot } from './bot'
-import { BotStatus } from './index'
+import { BotStatus, logInfo, loggerError, loggerInfo } from './index'
 import { PluginConfig } from './schema'
+import { BilibiliDmBot } from './bot'
+import { Context } from 'koishi'
 import QRCode from 'qrcode'
 
-import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
-import { logInfo, loggerError, loggerInfo } from './index'
+import { existsSync } from 'node:fs'
 
 export type BotLoginStatus = {
     status: 'init' | 'qrcode' | 'continue' | 'success' | 'error' | 'offline'

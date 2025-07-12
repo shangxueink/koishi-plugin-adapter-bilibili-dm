@@ -1,24 +1,22 @@
 //  src\index.ts
-import { Config, PluginConfig } from './schema'
 import { DataService } from '@koishijs/plugin-console'
+import { Config, PluginConfig } from './schema'
 import { BilibiliDmAdapter } from './adapter'
 import { BilibiliService } from './service'
-import { Context, Schema, } from 'koishi'
 import { BilibiliDmBot } from './bot'
+import { Context } from 'koishi'
 
-import { promises as fs } from 'node:fs'
-import { existsSync } from 'node:fs'
+import { promises as fs, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-// 全局函数
-export let logInfo: (message: string, ...args: any[]) => void;
-export let loggerInfo: (message: string, ...args: any[]) => void;
 export let loggerError: (message: string, ...args: any[]) => void;
+export let loggerInfo: (message: string, ...args: any[]) => void;
+export let logInfo: (message: string, ...args: any[]) => void;
 
-export const name = 'adapter-bilibili-dm'
-export const inject = ['http', 'server', 'console', 'logger']
-export const filter = false
+export const name = "adapter-bilibili-dm"
+export const inject = ["http", "server", "console", "logger"]
 export const reusable = true
+export const filter = false
 export { Config }
 export const usage = `
 ---
@@ -224,66 +222,72 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
 }
 
 export function apply(ctx: Context, config: PluginConfig) {
-  // 初始化全局函数
-  logInfo = (message: string, ...args: any[]) => {
-    if (config.loggerinfo) {
+
+  ctx.on('ready', () => {
+
+    // 初始化全局函数
+    logInfo = (message: string, ...args: any[]) => {
+      if (config.loggerinfo) {
+        ctx.logger.info(message, ...args);
+      }
+    };
+    loggerInfo = (message: string, ...args: any[]) => {
       ctx.logger.info(message, ...args);
-    }
-  };
-  loggerInfo = (message: string, ...args: any[]) => {
-    ctx.logger.info(message, ...args);
-  };
-  loggerError = (message: string, ...args: any[]) => {
-    ctx.logger.error(message, ...args);
-  };
+    };
+    loggerError = (message: string, ...args: any[]) => {
+      ctx.logger.error(message, ...args);
+    };
 
-  // 创建服务
-  const service = new BilibiliService(ctx, config)
-  ctx.bilibili_dm_service = service
+    // 创建服务
+    const service = new BilibiliService(ctx, config)
+    ctx.bilibili_dm_service = service
 
-  ctx.plugin({
-    name: `bilibili-launcher-${config.selfId}`,
-    apply: (ctx) => {
-      logInfo(`[${config.selfId}] 创建BilibiliLauncher实例，selfId: ${config.selfId}`)
-      return new BilibiliLauncher(ctx, service, config)
-    }
-  })
+    ctx.plugin({
+      name: `bilibili-launcher-${config.selfId}`,
+      apply: (ctx) => {
+        logInfo(`[${config.selfId}] 创建BilibiliLauncher实例，selfId: ${config.selfId}`)
+        return new BilibiliLauncher(ctx, service, config)
+      }
+    })
 
-  ctx.plugin(BilibiliDmAdapter, {
-    ...config,
-    selfId: config.selfId
-  })
+    ctx.plugin(BilibiliDmAdapter, {
+      ...config,
+      selfId: config.selfId
+    })
 
-  // 统一处理插件停用
-  ctx.on('dispose', () => {
-    logInfo(`[${config.selfId}] 插件正在停用，执行清理操作`)
+    ctx.on('dispose', () => {
+      logInfo(`[${config.selfId}] 插件正在停用，执行清理操作`)
 
-    try {
-      // 标记服务为已停用状态
-      service.markAsDisposed()
+      try {
+        // 标记服务为已停用状态
+        service.markAsDisposed()
 
-      const adapters = ctx.bots
-        .filter(bot => bot.platform === 'bilibili')
-        .map(bot => bot.ctx.registry.get(BilibiliDmAdapter))
-        .filter(Boolean)
+        const adapters = ctx.bots
+          .filter(bot => bot.platform === 'bilibili')
+          .map(bot => bot.ctx.registry.get(BilibiliDmAdapter))
+          .filter(Boolean)
 
-      logInfo(`[${config.selfId}] 找到 ${adapters.length} 个需要停止的适配器实例`)
+        logInfo(`[${config.selfId}] 找到 ${adapters.length} 个需要停止的适配器实例`)
 
-      adapters.forEach(adapter => {
-        if (adapter && adapter.config) {
-          try {
-            logInfo(`[${adapter.config.selfId}] 正在停止适配器...`)
-            adapter.dispose()
-          } catch (err) {
-            ctx.logger.error(`[${adapter.config.selfId}] 停止适配器失败: ${err.message}`)
+        adapters.forEach(adapter => {
+          if (adapter && adapter.config) {
+            try {
+              logInfo(`[${adapter.config.selfId}] 正在停止适配器...`)
+              adapter.dispose()
+            } catch (err) {
+              ctx.logger.error(`[${adapter.config.selfId}] 停止适配器失败: ${err.message}`)
+            }
           }
-        }
-      })
+        })
 
-      logInfo(`[${config.selfId}] 所有适配器已停止，插件停用完成`)
-    } catch (err) {
-      ctx.logger.error(`[${config.selfId}] 插件停用过程中发生错误: ${err.message}`)
-    }
+        logInfo(`[${config.selfId}] 所有适配器已停止，插件停用完成`)
+      } catch (err) {
+        ctx.logger.error(`[${config.selfId}] 插件停用过程中发生错误: ${err.message}`)
+      }
+    })
+
   })
+
+
   ctx.logger.info(`[${config.selfId}] Bilibili 私信适配器启动。`)
 }
