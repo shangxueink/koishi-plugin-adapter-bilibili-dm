@@ -441,7 +441,11 @@ export class HttpClient {
         return true;
       }
 
-      logInfo(`发送消息给 ${receiverId} 失败: ${res.message || res.msg} (code: ${res.code})`);
+      if (res.code === 21020) {
+        logInfo(`发送消息给 ${receiverId} 失败: 频率过快，请稍后再发 (code: ${res.code})`);
+      } else {
+        logInfo(`发送消息给 ${receiverId} 失败: ${res.message || res.msg} (code: ${res.code})`);
+      }
       return false;
     }, `发送消息给 ${receiverId} 失败`, false);
   }

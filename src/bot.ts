@@ -7,12 +7,13 @@ import { HttpClient } from './http'
 
 export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   public readonly http: HttpClient
-  private _lastPollTs: number = 0 // 微秒
+  private _lastPollTs: number = 0 // 毫秒
   private _processedMsgIds: Set<string> = new Set()
   private readonly _maxCacheSize: number
   private _cleanupFunctions: Array<() => void> = []
   public readonly pluginConfig: PluginConfig
   private isStopping: boolean = false;
+  private _botOnlineTimestamp: number = 0;
 
   constructor(public ctx: Context, config: PluginConfig) {
     super(ctx, config, 'bilibili')
@@ -29,7 +30,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
 
     this.http = new HttpClient(this.ctx, this.pluginConfig)
-    this._lastPollTs = (Date.now() - 20 * 1000) * 1000
+    this._lastPollTs = Date.now() - 20 * 1000 // 获取过去20秒的消息 (毫秒)
     this._maxCacheSize = this.pluginConfig.maxCacheSize || 1000;
 
     logInfo(`[${this.selfId}] BilibiliDmBot实例创建完成，准备启动`)
@@ -38,6 +39,14 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   async start() {
     logInfo(`[${this.selfId}] 开始启动机器人...`)
     await super.start()
+
+    if (this.pluginConfig.ignoreOfflineMessages) {
+      this._botOnlineTimestamp = Date.now(); // 记录机器人上线时间 (毫秒)
+      logInfo(`[${this.selfId}] 已开启“不响应机器人离线的未读消息”功能，机器人上线时间戳已记录。`);
+    }
+    // 无论是否忽略离线消息，首次轮询都从当前时间开始，避免处理启动前的旧会话
+    this._lastPollTs = Date.now(); // 毫秒
+    logInfo(`[${this.selfId}] _lastPollTs 已设置为当前时间，确保从最新会话开始轮询。`);
 
     if (!this.http.hasCookies()) {
       logInfo(`[${this.selfId}] 警告：启动机器人时cookie未设置，可能导致轮询失败`)
@@ -148,7 +157,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
 
     try {
-      const pollTs = Date.now() * 1000
+      const pollTs = Date.now() // 毫秒
       const newSessionsData = await this.http.getNewSessions(this._lastPollTs)
 
       if (this.isStopping) {
@@ -156,18 +165,17 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
         return
       }
 
-      this._lastPollTs = pollTs
-
       if (!newSessionsData) {
+        // 如果没有新会话数据，直接返回
+        this._lastPollTs = pollTs; // 即使没有新会话，也更新时间戳
         return
       }
 
       if (!newSessionsData.session_list?.length) {
+        // 如果会话列表为空，也更新 _lastPollTs，确保下次从当前时间开始轮询
+        this._lastPollTs = pollTs;
         return
       }
-
-      // 一般是自bot自己发送的消息
-      logInfo(`[${this.selfId}] 轮询到 ${newSessionsData.session_list.length} 个会话`)
 
       for (const session of newSessionsData.session_list) {
         if (session.unread_count > 0) {
@@ -186,12 +194,19 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
           if (messageData?.messages) {
             logInfo(`[${this.selfId}] 获取到 ${messageData.messages.length} 条消息`)
             for (const msg of messageData.messages.reverse()) {
+              // 如果开启了忽略离线消息，并且消息时间戳早于机器人上线时间，则跳过
+              if (this.pluginConfig.ignoreOfflineMessages && msg.timestamp * 1000 < this._botOnlineTimestamp) {
+                logInfo(`[${this.selfId}] 跳过离线期间的消息 (UID: ${msg.sender_uid}, MsgKey: ${msg.msg_key})`);
+                continue;
+              }
               this.adaptMessage(msg, session.session_type, session.talker_id)
             }
           }
           await this.http.updateAck(session.talker_id, session.session_type, session.max_seqno)
         }
       }
+      // 在处理完所有会话后，更新 _lastPollTs 为当前轮询时间
+      this._lastPollTs = pollTs;
     } catch (error) {
       if (error.code === 'INACTIVE_EFFECT') {
         logInfo(`[${this.selfId}] 关闭过程中，跳过轮询。`)
@@ -269,6 +284,13 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   private async adaptMessage(msg: PrivateMessage, sessionType: number, talkerId: number) {
     if (msg.sender_uid.toString() === this.selfId) return
 
+    // 屏蔽的UID
+    const senderUid = msg.sender_uid.toString();
+    if (this.pluginConfig.blockedUids && this.pluginConfig.blockedUids.some(blocked => blocked.uid === senderUid)) {
+      logInfo(`屏蔽来自UID ${senderUid} 的消息。`)
+      return
+    }
+
     const msgId = msg.msg_key
     if (this._processedMsgIds.has(msgId)) {
       logInfo(`跳过已处理的消息: ${msgId}`)
@@ -318,7 +340,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       type: 'message',
       platform: this.platform,
       selfId: this.selfId,
-      timestamp: msg.timestamp * 1000,
+      timestamp: msg.timestamp * 1000, // 毫秒
       channel: {
         id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`,
         type: sessionType === 1 ? 1 : 0,
@@ -333,11 +355,11 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
         id: msg.msg_key,
         elements: h.normalize(contentFragment),
         content: h.normalize(contentFragment).join(''),
-        timestamp: msg.timestamp * 1000,
+        timestamp: msg.timestamp * 1000, // 毫秒
         quote: msg.msg_status === 1 ? {
           id: msg.msg_key,
           content: '该消息已被发送者撤回',
-          timestamp: msg.timestamp * 1000,
+          timestamp: msg.timestamp * 1000, // 毫秒
           user: { id: msg.sender_uid.toString() }
         } : undefined,
       },

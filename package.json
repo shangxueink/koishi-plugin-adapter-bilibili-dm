@@ -1,50 +1,50 @@
 {
   "name": "koishi-plugin-adapter-bilibili-dm",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Bilibili Direct Message Adapter for Koishi\nBilibili 私信适配器",
-  "main": "lib/index.js",
   "typings": "lib/index.d.ts",
+  "main": "lib/index.js",
   "files": [
     "client",
-    "src",
     "dist",
+    "src",
     "lib"
   ],
   "license": "MIT",
   "author": "leafingxyz <2596628651@qq.com>",
   "contributors": [
-    "leafingxyz <2596628651@qq.com>",
-    "shangxueink <1919892171@qq.com>"
+    "shangxueink <1919892171@qq.com>",
+    "leafingxyz <2596628651@qq.com>"
   ],
-  "homepage": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm",
   "bugs": {
     "url": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/issues"
   },
+  "homepage": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm",
   "scripts": {
     "build": "tsc -b"
   },
   "keywords": [
-    "bot",
-    "koishi",
-    "adapter",
-    "chatbot",
-    "satori",
     "bilibili",
-    "私信"
+    "chatbot",
+    "adapter",
+    "koishi",
+    "satori",
+    "私信",
+    "bot"
   ],
   "koishi": {
     "description": {
-      "en": "Bilibili Direct Message Adapter for Koishi",
-      "ja": "Koishi用Bilibiliダイレクトメッセージアダプター",
-      "fr": "Adaptateur de messages directs Bilibili pour Koishi",
       "es": "Adaptador de mensajes directos de Bilibili para Koishi",
+      "fr": "Adaptateur de messages directs Bilibili pour Koishi",
       "de": "Bilibili Direktnachrichten-Adapter für Koishi",
       "ru": "Адаптер прямых сообщений Bilibili для Koishi",
+      "ja": "Koishi用Bilibiliダイレクトメッセージアダプター",
+      "en": "Bilibili Direct Message Adapter for Koishi",
       "zh": "Bilibili 私信适配器"
     },
-    "service": {},
     "preview": true,
-    "hidden": false
+    "hidden": false,
+    "service": {}
   },
   "peerDependencies": {
     "koishi": "^4.16.0"
