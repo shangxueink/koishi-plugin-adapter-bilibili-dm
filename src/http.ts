@@ -59,7 +59,6 @@ export class HttpClient {
         return await requestFn();
       } catch (httpError) {
         if (httpError.message?.includes('context disposed') ||
-          httpError.code === 'ETIMEDOUT' ||
           httpError.code === 'INACTIVE_EFFECT') {
           logInfo(`[${this.selfId}] 上下文已停用，HTTP请求被中断: ${httpError.message}`);
           this.isDisposed = true;
