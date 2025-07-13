@@ -4,22 +4,25 @@ import { Config, PluginConfig } from './schema'
 import { BilibiliDmAdapter } from './adapter'
 import { BilibiliService } from './service'
 import { BilibiliDmBot } from './bot'
-import { Context } from 'koishi'
+import { TestPlugin } from './test'
+import { Context, Logger } from 'koishi'
 
 import { promises as fs, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-export let loggerError: (message: string, ...args: any[]) => void;
-export let loggerInfo: (message: string, ...args: any[]) => void;
-export let logInfo: (message: string, ...args: any[]) => void;
+export let loggerError: (message: any, ...args: any[]) => void;
+export let loggerInfo: (message: any, ...args: any[]) => void;
+export let logInfo: (message: any, ...args: any[]) => void;
 
 let isConsoleEntryAdded = false;
 
 export const name = "adapter-bilibili-dm"
-export const inject = ["http", "server", "console", "logger"]
+export const inject = ["http", "i18n", "server", "logger", "console"]
 export const reusable = true
 export const filter = false
 export { Config }
+const logger = new Logger(`Development:${name}-dev`)
+export * from './test';
 export const usage = `
 ---
 
@@ -27,7 +30,6 @@ export const usage = `
 <p>➣ <a href="https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/tree/main?tab=readme-ov-file#koishi-plugin-adapter-bilibili-dm" target="_blank">点我查看使用说明</a></p>
 
 ---
-
 `
 export interface BotStatus {
   status: 'init' | 'qrcode' | 'continue' | 'success' | 'error' | 'offline'
@@ -211,18 +213,23 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
 
 export function apply(ctx: Context, config: PluginConfig) {
 
+  // 开发模式且非依赖安装时 加载测试插件
+  if (process.env.NODE_ENV === 'development' && !__dirname.includes('node_modules')) {
+    ctx.plugin(TestPlugin)
+  }
+
   ctx.on('ready', () => {
 
     // 初始化全局函数
-    logInfo = (message: string, ...args: any[]) => {
+    logInfo = (message: any, ...args: any[]) => {
       if (config.loggerinfo) {
-        ctx.logger.info(message, ...args);
+        logger.info(message, ...args);
       }
     };
-    loggerInfo = (message: string, ...args: any[]) => {
+    loggerInfo = (message: any, ...args: any[]) => {
       ctx.logger.info(message, ...args);
     };
-    loggerError = (message: string, ...args: any[]) => {
+    loggerError = (message: any, ...args: any[]) => {
       ctx.logger.error(message, ...args);
     };
 

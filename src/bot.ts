@@ -179,7 +179,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     if (msg.sender_uid === this.selfId) return
 
     // 屏蔽的UID
-    const senderUid = msg.sender_uid; // 已经是 string
+    const senderUid = msg.sender_uid;
     if (this.pluginConfig.blockedUids && this.pluginConfig.blockedUids.some(blocked => blocked.uid === senderUid)) {
       logInfo(`屏蔽来自UID ${senderUid} 的消息。`)
       return
@@ -403,11 +403,10 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   }
 
   async getMessage(channelId: string, messageId: string): Promise<any | undefined> {
-    this.ctx.logger.info(`尝试获取 ${channelId} 中的消息 ${messageId}`);
+    logInfo(`尝试获取 ${channelId} 中的消息 ${messageId}`);
     const [type, talkerIdStr] = channelId.split(':');
     const talkerId = Number(talkerIdStr);
-    const sessionType = type === 'private' ? 1 : 0;
-    //  1 为私聊，0 为其他
+    const sessionType = type === 'private' ? 1 : 0;    //  1 为私聊，0 为其他
 
     const newSessionsData = await this.http.getNewSessions(0);
     if (!newSessionsData || !newSessionsData.session_list) {
@@ -454,7 +453,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
           contentFragment = h('text', { content: `[消息已撤回]` });
           break;
         default:
-          this.ctx.logger.info(`不支持的消息类型: ${targetMsg.msg_type}, 内容: ${targetMsg.content}`);
+          this.ctx.logger.warn(`不支持的消息类型: ${targetMsg.msg_type}, 内容: ${targetMsg.content}`);
           contentFragment = `[Unsupported message type: ${targetMsg.msg_type}]`;
           break;
       }
@@ -487,20 +486,19 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       quote: undefined,
     };
 
-    this.ctx.logger.info(`成功获取消息 ${messageId}:`, message);
+    logInfo(`成功获取消息 ${messageId}:`, message);
     return message;
   }
 
   async deleteMessage(channelId: string, messageId: string): Promise<void> {
-    this.ctx.logger.info(`尝试在 ${channelId} 撤回 ${messageId}`)
+    logInfo(`尝试在 ${channelId} 撤回 ${messageId}`)
     const [type, talkerIdStr] = channelId.split(':');
     const talkerId = Number(talkerIdStr);
-    // 再次尝试将 content 字段设置为包含 msg_key 的 JSON 字符串
     const msgContent = messageId;
-    this.ctx.logger.info(`deleteMessage: msgContent=${msgContent}`);
+    logInfo(`deleteMessage: msgContent=${msgContent}`);
     const msgKey = await this.http.sendMessage(this.selfId, talkerId, msgContent, 5);
     if (msgKey) {
-      this.ctx.logger.info(`成功发送撤回消息指令给 ${talkerId}，msg_key: ${msgKey}`);
+      logInfo(`成功发送撤回消息指令给 ${talkerId}，msg_key: ${msgKey}`);
     } else {
       this.ctx.logger.warn(`发送撤回消息指令失败给 ${talkerId}，msg_key: ${messageId}`);
     }
