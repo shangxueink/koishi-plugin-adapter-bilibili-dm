@@ -1,10 +1,9 @@
 //  src\http.ts
-import { BiliApiResponse, MyInfoData, QrCodeData, QrCodePollResult, UploadImageData, WbiKeys, NavWbiImg, NewSessionsData, SessionMessagesData } from './types'
+import { BiliApiResponse, MyInfoData, QrCodeData, QrCodePollResult, UploadImageData, WbiKeys, NavWbiImg, NewSessionsData, SessionMessagesData, BiliSendMessageResponseData } from './types'
 import { logInfo, loggerError, loggerInfo } from './index'
 import { AxiosRequestHeaders } from 'axios'
 import { Context, Quester } from 'koishi'
 import { v4 as uuidv4 } from 'uuid'
-
 import { createHash } from 'node:crypto'
 
 const MIXIN_KEY_ENCODE_TABLE = [
@@ -319,7 +318,7 @@ export class HttpClient {
 
     logInfo(`[${this.selfId}] 正在获取用户 ${talker_id} 在时间戳 ${begin_seqno} 之后的消息`);
     return this.safeRequest(async () => {
-      const res = await this.http.get<BiliApiResponse<SessionMessagesData>>(
+      const httpResponse = await this.http.get<BiliApiResponse<SessionMessagesData>>(
         'https://api.vc.bilibili.com/svr_sync/v1/svr_sync/fetch_session_msgs',
         {
           params: {
@@ -332,9 +331,21 @@ export class HttpClient {
           },
           headers: {
             'Cookie': Object.entries(this.cookies).map(([k, v]) => `${k}=${v}`).join('; ')
-          }
+          },
+          responseType: 'text', // 确保获取原始文本
         }
       );
+
+      const resText = httpResponse as unknown as string; // 强制转为 string
+      let res: BiliApiResponse<SessionMessagesData>;
+      try {
+        const transformedResText = resText.replace(/"msg_key":(\d+)/g, '"msg_key":"$1"');
+        res = JSON.parse(transformedResText);
+      } catch (e) {
+        loggerError(`[${this.selfId}] fetchSessionMessages JSON parse error: ${e.message}, raw: ${resText}`);
+        return null;
+      }
+
       if (res.code === 0) return res.data;
       logInfo(`[${this.selfId}] 获取用户 ${talker_id} 的消息失败: ${res.message} (错误码: ${res.code})`);
       return null;
@@ -383,7 +394,8 @@ export class HttpClient {
     }, '上传图片时发生网络错误', null);
   }
 
-  async sendMessage(senderUid: number, receiverId: number, msgContent: string, msgType: 1 | 2): Promise<boolean> {
+  async sendMessage(senderUid: string, receiverId: number, msgContent: string, msgType: 1 | 2 | 5): Promise<string | null> {
+    // logInfo(`[${this.selfId}] sendMessage: msgType=${msgType}, msgContent=${msgContent}`);
     const msgObject = {
       sender_uid: senderUid,
       receiver_id: receiverId,
@@ -411,6 +423,7 @@ export class HttpClient {
       'csrf_token': this.biliJct,
       'csrf': this.biliJct,
     }).toString();
+    // logInfo(`[${this.selfId}] sendMessage: formPayload=${formPayload}`);
 
     return this.safeRequest(async () => {
       const urlParams = await this.signWithWbi({
@@ -421,33 +434,51 @@ export class HttpClient {
 
       const apiUrl = 'https://api.vc.bilibili.com/web_im/v1/web_im/send_msg';
 
-      const requestConfig = {
-        params: urlParams,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Referer': 'https://message.bilibili.com/h5',
-          'Origin': 'https://message.bilibili.com',
-        }
-      };
-
-      const res = await this.http.post<BiliApiResponse<{ msg_key: string }>>(
+      const fullUrl = `${apiUrl}?${new URLSearchParams(urlParams).toString()}`;
+      logInfo(fullUrl);
+      const httpResponse = await this.http.post<BiliApiResponse<BiliSendMessageResponseData>>(
         apiUrl,
         formPayload,
-        requestConfig
+        {
+          params: urlParams,
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Referer': 'https://message.bilibili.com/h5',
+            'Origin': 'https://message.bilibili.com',
+          },
+          responseType: 'text',
+        }
       );
+
+      const resText = httpResponse as unknown as string; // 强制转为 string
+      logInfo(`[${this.selfId}] sendMessage raw response text: ${resText}`);
+
+      let res: BiliApiResponse<BiliSendMessageResponseData>;
+      try {
+        // 在 JSON.parse 之前，使用正则表达式将 msg_key 的数字值用引号括起来
+        // 否则后三位会变成 0
+        const transformedResText = resText.replace(/"msg_key":(\d+)/g, '"msg_key":"$1"');
+        res = JSON.parse(transformedResText);
+      } catch (e) {
+        loggerError(`[${this.selfId}] sendMessage JSON parse error: ${e.message}, raw: ${resText}`);
+        return null;
+      }
 
       if (res.code === 0) {
         logInfo(`成功发送消息给 ${receiverId} (msg_key: ${res.data?.msg_key})`);
-        return true;
+        return res.data?.msg_key || null;
       }
 
       if (res.code === 21020) {
         logInfo(`发送消息给 ${receiverId} 失败: 频率过快，请稍后再发 (code: ${res.code})`);
+      } else if (res.code === 10005) {
+        logInfo(`发送消息给 ${receiverId} 失败: 消息ID不存在 (code: ${res.code})`);
       } else {
         logInfo(`发送消息给 ${receiverId} 失败: ${res.message || res.msg} (code: ${res.code})`);
       }
-      return false;
-    }, `发送消息给 ${receiverId} 失败`, false);
+
+      return null;
+    }, `发送消息给 ${receiverId} 失败`, null);
   }
   // #endregion
 

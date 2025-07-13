@@ -23,17 +23,9 @@ export class BilibiliDmAdapter extends Adapter<Context, BilibiliDmBot> {
 
       const requestedSelfId = ctx.query.selfId as string
       if (requestedSelfId && status[requestedSelfId]) {
-        logInfo(`收到前端状态数据请求，返回selfId=${requestedSelfId}的数据`)
         ctx.body = { [requestedSelfId]: status[requestedSelfId] }
         return
       }
-
-      logInfo('收到前端状态数据请求，返回所有数据:', JSON.stringify(status, (key, value) => {
-        if (key === 'image' && typeof value === 'string' && value.length > 100) {
-          return value.substring(0, 100) + '... [图片数据已截断]'
-        }
-        return value
-      }))
       ctx.body = status
     })
   }

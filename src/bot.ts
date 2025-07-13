@@ -1,6 +1,6 @@
 //  src\bot.ts
 import { logInfo, loggerError, loggerInfo } from './index'
-import { Bot, Context, h, Fragment } from 'koishi'
+import { Bot, Context, h, Fragment, Session } from 'koishi'
 import { PrivateMessage } from './types'
 import { PluginConfig } from './schema'
 import { HttpClient } from './http'
@@ -228,9 +228,9 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     const flushTextBuffer = async () => {
       if (textBuffer.trim()) {
         const msgContent = { content: textBuffer.trim() }
-        const success = await this.http.sendMessage(Number(this.selfId), Number(talkerId), JSON.stringify(msgContent), 1)
-        if (success) {
-          sentMessageIds.push(Date.now().toString())
+        const msgKey = await this.http.sendMessage(this.selfId, Number(talkerId), JSON.stringify(msgContent), 1)
+        if (msgKey) {
+          sentMessageIds.push(msgKey);
         }
         textBuffer = ''
       }
@@ -266,9 +266,9 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
             size: uploadResult.img_size || 0,
             original: 1
           }
-          const success = await this.http.sendMessage(Number(this.selfId), Number(talkerId), JSON.stringify(msgContent), 2)
-          if (success) {
-            sentMessageIds.push(Date.now().toString() + '_img')
+          const msgKey = await this.http.sendMessage(this.selfId, Number(talkerId), JSON.stringify(msgContent), 2)
+          if (msgKey) {
+            sentMessageIds.push(msgKey);
           }
         }
       } catch (error) {
@@ -278,14 +278,122 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
 
     await flushTextBuffer()
 
-    return sentMessageIds
+    return sentMessageIds;
+  }
+
+  async sendPrivateMessage(userId: string, content: Fragment): Promise<string[]> {
+    return this.sendMessage(`private:${userId}`, content);
+  }
+
+  async deleteMessage(channelId: string, messageId: string): Promise<void> {
+    this.ctx.logger.info(`尝试在 ${channelId} 撤回 ${messageId}`)
+    const [type, talkerIdStr] = channelId.split(':');
+    const talkerId = Number(talkerIdStr);
+    // 再次尝试将 content 字段设置为包含 msg_key 的 JSON 字符串
+    const msgContent = messageId;
+    this.ctx.logger.info(`deleteMessage: msgContent=${msgContent}`);
+    const msgKey = await this.http.sendMessage(this.selfId, talkerId, msgContent, 5);
+    if (msgKey) {
+      this.ctx.logger.info(`成功发送撤回消息指令给 ${talkerId}，msg_key: ${msgKey}`);
+    } else {
+      this.ctx.logger.warn(`发送撤回消息指令失败给 ${talkerId}，msg_key: ${messageId}`);
+    }
+  }
+
+  async getMessage(channelId: string, messageId: string): Promise<any | undefined> {
+    this.ctx.logger.info(`尝试获取 ${channelId} 中的消息 ${messageId}`);
+    const [type, talkerIdStr] = channelId.split(':');
+    const talkerId = Number(talkerIdStr);
+    const sessionType = type === 'private' ? 1 : 0;
+    //  1 为私聊，0 为其他
+
+    const newSessionsData = await this.http.getNewSessions(0);
+    if (!newSessionsData || !newSessionsData.session_list) {
+      this.ctx.logger.warn(`获取会话列表失败，无法获取消息 ${messageId}`);
+      return undefined;
+    }
+
+    const sessionInfo = newSessionsData.session_list.find(s => s.talker_id === talkerId && s.session_type === sessionType);
+    if (!sessionInfo) {
+      this.ctx.logger.warn(`未找到与 ${channelId} 匹配的会话信息，无法获取消息 ${messageId}`);
+      return undefined;
+    }
+
+    // 使用会话的最大序列号作为起始点获取消息
+    const messageData = await this.http.fetchSessionMessages(
+      talkerId,
+      sessionType,
+      0, // 从最早的消息开始查找 
+    );
+
+    if (!messageData || !messageData.messages) {
+      this.ctx.logger.warn(`获取会话 ${talkerId} 的消息失败，无法获取消息 ${messageId}`);
+      return undefined;
+    }
+
+    const targetMsg = messageData.messages.find(msg => msg.msg_key === messageId);
+
+    if (!targetMsg) {
+      this.ctx.logger.warn(`在会话 ${talkerId} 消息中未找到消息 ${messageId}`);
+      return undefined;
+    }
+
+    let contentFragment: Fragment;
+    try {
+      const parsedContent = JSON.parse(targetMsg.content);
+      switch (targetMsg.msg_type) {
+        case 1:
+          contentFragment = h.parse(parsedContent.content);
+          break;
+        case 2:
+          contentFragment = h('image', { url: parsedContent.url });
+          break;
+        case 5:
+          contentFragment = h('text', { content: `[消息已撤回]` });
+          break;
+        default:
+          this.ctx.logger.info(`不支持的消息类型: ${targetMsg.msg_type}, 内容: ${targetMsg.content}`);
+          contentFragment = `[Unsupported message type: ${targetMsg.msg_type}]`;
+          break;
+      }
+    } catch (e) {
+      this.ctx.logger.error(`解析消息内容失败: ${targetMsg.content}, 错误: `, e);
+      contentFragment = '[消息解析失败]';
+    }
+
+    const userInfo = await this.http.getUser(targetMsg.sender_uid);
+
+    const message: any = {
+      messageId: targetMsg.msg_key,
+      id: targetMsg.msg_key,
+      elements: h.normalize(contentFragment),
+      content: h.normalize(contentFragment).join(''),
+      user: {
+        id: targetMsg.sender_uid,
+        name: userInfo?.nickname || '',
+        userId: targetMsg.sender_uid,
+        avatar: userInfo?.avatar || '',
+        username: userInfo?.nickname || '',
+      },
+      timestamp: targetMsg.timestamp * 1000, // 转换为毫秒
+      channel: {
+        id: channelId,
+        type: sessionType,
+      },
+      member: undefined,
+      guild: undefined,
+      quote: undefined,
+    };
+
+    this.ctx.logger.info(`成功获取消息 ${messageId}:`, message);
+    return message;
   }
 
   private async adaptMessage(msg: PrivateMessage, sessionType: number, talkerId: number) {
-    if (msg.sender_uid.toString() === this.selfId) return
+    if (msg.sender_uid === this.selfId) return
 
     // 屏蔽的UID
-    const senderUid = msg.sender_uid.toString();
+    const senderUid = msg.sender_uid; // 已经是 string
     if (this.pluginConfig.blockedUids && this.pluginConfig.blockedUids.some(blocked => blocked.uid === senderUid)) {
       logInfo(`屏蔽来自UID ${senderUid} 的消息。`)
       return
@@ -331,7 +439,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     logInfo(`正在获取用户昵称头像`)
     let userInfo
     try {
-      userInfo = await this.http.getUser(msg.sender_uid.toString());
+      userInfo = await this.http.getUser(msg.sender_uid);
     } catch (e) {
       loggerError(`头像昵称信息获取失败:`, e)
     }
@@ -346,7 +454,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
         type: sessionType === 1 ? 1 : 0,
       },
       user: {
-        id: msg.sender_uid.toString(),
+        id: msg.sender_uid,
         name: userInfo.nickname,
         username: userInfo.nickname,
         avatar: userInfo.avatar,
@@ -360,7 +468,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
           id: msg.msg_key,
           content: '该消息已被发送者撤回',
           timestamp: msg.timestamp * 1000, // 毫秒
-          user: { id: msg.sender_uid.toString() }
+          user: { id: msg.sender_uid }
         } : undefined,
       },
     })
@@ -372,7 +480,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
         selfId: this.selfId,
         timestamp: Date.now(),
         channel: { id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`, type: sessionType === 1 ? 1 : 0 },
-        user: { id: msg.sender_uid.toString() },
+        user: { id: msg.sender_uid },
         message: { id: msg.msg_key }
       }))
     } else {

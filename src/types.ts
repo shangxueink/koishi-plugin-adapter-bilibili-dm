@@ -7,10 +7,18 @@ export interface BiliApiResponse<T> {
   data?: T
 }
 
+// 扩展 BiliApiResponse 的 data 字段，使其可以包含 msg_key
+// 这样可以避免在 JSON 解析时将大数字转换为浮点数
+export interface BiliSendMessageResponseData {
+  msg_key: string; // 将 msg_key 定义为 string
+  msg_content?: string;
+  key_hit_infos?: Record<string, any>;
+}
+
 // from private_msg.md -> 私信主体对象
 // 私信消息对象
 export interface PrivateMessage {
-  sender_uid: number // 发送者UID
+  sender_uid: string // 发送者UID
   receiver_type: number // 接收者类型：1: 用户, 2: 群组
   receiver_id: number // 接收者ID
   msg_type: number // 消息类型

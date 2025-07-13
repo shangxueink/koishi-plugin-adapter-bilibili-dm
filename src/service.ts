@@ -62,10 +62,6 @@ export class BilibiliService {
 
             this.ctx.emit('bilibili-dm/status-update', this.status[selfId])
 
-            if (status.status === 'qrcode' && status.image) {
-                logInfo(`[${selfId}] 二维码图片已生成并准备发送到前端，数据长度: ${status.image.length} 字节`)
-            }
-
             try {
                 this.ctx.setTimeout(() => {
                     if (!this.isDisposed) {

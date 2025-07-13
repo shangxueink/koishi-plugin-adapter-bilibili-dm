@@ -114,14 +114,8 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
           ...status,
           selfId: config.selfId
         }
-
-        if (status.status === 'qrcode') {
-          logInfo(`[${config.selfId}] 二维码已生成，准备推送到前端，图片数据长度: ${status.image?.length || 0}`)
-        }
-
         // 刷新前端
         this.refresh()
-        logInfo(`[${config.selfId}] 状态已更新并刷新到前端: ${status.status}, 消息: ${status.message}`)
       } else {
         logInfo(`[${config.selfId}] 忽略非本实例的状态更新: ${status.selfId}`)
       }
@@ -139,7 +133,6 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
 
         // 刷新前端
         this.refresh()
-        logInfo(`[${config.selfId}] 通过通用事件更新状态并刷新到前端: ${status.status}, 消息: ${status.message}`)
       }
     })
 
@@ -151,7 +144,6 @@ export class BilibiliLauncher extends DataService<Record<string, BotStatus>> {
       const selfId = data.selfId || config.selfId
       this.currentBot = selfId
 
-      logInfo(`[${selfId}] 收到前端登录请求，前端传入的selfId: ${selfId}，配置中的selfId: ${config.selfId}，当前服务ID: ${this.serviceId}`)
       logInfo(`[${selfId}] 当前机器人列表: ${ctx.bots.map(bot => `${bot.platform}:${bot.selfId}`).join(', ')}`)
 
       // 更新状态
