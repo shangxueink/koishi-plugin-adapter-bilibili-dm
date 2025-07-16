@@ -4,16 +4,59 @@ import { Bot, Context, h, Fragment, Session } from 'koishi'
 import { PrivateMessage } from './types'
 import { PluginConfig } from './schema'
 import { HttpClient } from './http'
+import { Internal } from './internal' // 导入 Internal 类
+
+declare module 'koishi' {
+  interface Context {
+    internal: Internal; // 修改为 internal 属性
+  }
+
+  interface Events {
+    'bilibili/live'(data: {
+      id: string;
+      uid: string;
+      name: string;
+      avatar: string;
+      timestamp: number;
+      action: string;
+      type: string;
+      room_id: string;
+      title: string;
+      cover: string;
+      jump_url: string;
+    }): void;
+    'bilibili/dynamic'(data: {
+      id: string;
+      uid: string;
+      name: string;
+      avatar: string;
+      timestamp: number;
+      action: string;
+      type: string;
+      text: string;
+      jump_url: string;
+      cover: string;
+      title?: string;
+      description?: string;
+      bvid?: string;
+      aid?: string;
+      images?: string[];
+      cvid?: number;
+    }): void;
+  }
+}
 
 export class BilibiliDmBot extends Bot<Context, PluginConfig> {
-  public readonly http: HttpClient
-  private _lastPollTs: number = 0 // 毫秒
-  private _processedMsgIds: Set<string> = new Set()
+  private lastPollTs: number = 0 // 毫秒
+  private processedMsgIds: Set<string> = new Set()
   private readonly _maxCacheSize: number
-  private _cleanupFunctions: Array<() => void> = []
-  public readonly pluginConfig: PluginConfig
+  private cleanupFunctions: Array<() => void> = []
   private isStopping: boolean = false;
-  private _botOnlineTimestamp: number = 0;
+  private botOnlineTimestamp: number = 0;
+
+  public readonly http: HttpClient
+  public readonly pluginConfig: PluginConfig
+  public readonly internal: Internal; // 修改为 internal 属性
 
   constructor(public ctx: Context, config: PluginConfig) {
     super(ctx, config, 'bilibili')
@@ -30,16 +73,18 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
 
     this.http = new HttpClient(this.ctx, this.pluginConfig)
-    this._lastPollTs = Date.now() - 20 * 1000 // 获取过去20秒的消息 (毫秒)
+    this.lastPollTs = Date.now() - 20 * 1000 // 获取过去20秒的消息 (毫秒)
     this._maxCacheSize = this.pluginConfig.maxCacheSize || 1000;
+
+    this.internal = new Internal(this, this.ctx); // 实例化 Internal 类
 
     logInfo(`[${this.selfId}] BilibiliDmBot实例创建完成，准备启动`)
   }
 
   addCleanup(fn: () => void) {
-    this._cleanupFunctions.push(fn)
+    this.cleanupFunctions.push(fn)
   }
-
+  // #region basic API
   private startPolling(): void {
     logInfo(`[${this.selfId}] 开始设置轮询定时器...`)
 
@@ -117,7 +162,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
 
     try {
       const pollTs = Date.now() // 毫秒
-      const newSessionsData = await this.http.getNewSessions(this._lastPollTs)
+      const newSessionsData = await this.http.getNewSessions(this.lastPollTs)
 
       if (this.isStopping) {
         logInfo(`[${this.selfId}] 机器人正在停止，在获取会话数据后跳过后续轮询处理。`)
@@ -126,13 +171,13 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
 
       if (!newSessionsData) {
         // 如果没有新会话数据，直接返回
-        this._lastPollTs = pollTs; // 即使没有新会话，也更新时间戳
+        this.lastPollTs = pollTs; // 即使没有新会话，也更新时间戳
         return
       }
 
       if (!newSessionsData.session_list?.length) {
-        // 如果会话列表为空，也更新 _lastPollTs，确保下次从当前时间开始轮询
-        this._lastPollTs = pollTs;
+        // 如果会话列表为空，也更新 lastPollTs，确保下次从当前时间开始轮询
+        this.lastPollTs = pollTs;
         return
       }
 
@@ -154,7 +199,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
             logInfo(`[${this.selfId}] 获取到 ${messageData.messages.length} 条消息`)
             for (const msg of messageData.messages.reverse()) {
               // 如果开启了忽略离线消息，并且消息时间戳早于机器人上线时间，则跳过
-              if (this.pluginConfig.ignoreOfflineMessages && msg.timestamp * 1000 < this._botOnlineTimestamp) {
+              if (this.pluginConfig.ignoreOfflineMessages && msg.timestamp * 1000 < this.botOnlineTimestamp) {
                 logInfo(`[${this.selfId}] 跳过离线期间的消息 (UID: ${msg.sender_uid}, MsgKey: ${msg.msg_key})`);
                 continue;
               }
@@ -164,8 +209,8 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
           await this.http.updateAck(session.talker_id, session.session_type, session.max_seqno)
         }
       }
-      // 在处理完所有会话后，更新 _lastPollTs 为当前轮询时间
-      this._lastPollTs = pollTs;
+      // 在处理完所有会话后，更新 lastPollTs 为当前轮询时间
+      this.lastPollTs = pollTs;
     } catch (error) {
       if (error.code === 'INACTIVE_EFFECT') {
         logInfo(`[${this.selfId}] 关闭过程中，跳过轮询。`)
@@ -186,16 +231,16 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
 
     const msgId = msg.msg_key
-    if (this._processedMsgIds.has(msgId)) {
+    if (this.processedMsgIds.has(msgId)) {
       logInfo(`跳过已处理的消息: ${msgId}`)
       return
     }
 
-    this._processedMsgIds.add(msgId)
+    this.processedMsgIds.add(msgId)
 
-    if (this._processedMsgIds.size > this._maxCacheSize) {
-      const oldestId = this._processedMsgIds.values().next().value
-      this._processedMsgIds.delete(oldestId)
+    if (this.processedMsgIds.size > this._maxCacheSize) {
+      const oldestId = this.processedMsgIds.values().next().value
+      this.processedMsgIds.delete(oldestId)
     }
 
     let contentFragment: Fragment
@@ -279,12 +324,12 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     await super.start()
 
     if (this.pluginConfig.ignoreOfflineMessages) {
-      this._botOnlineTimestamp = Date.now(); // 记录机器人上线时间 (毫秒)
+      this.botOnlineTimestamp = Date.now(); // 记录机器人上线时间 (毫秒)
       logInfo(`[${this.selfId}] 已开启“不响应机器人离线的未读消息”功能，机器人上线时间戳已记录。`);
     }
     // 无论是否忽略离线消息，首次轮询都从当前时间开始，避免处理启动前的旧会话
-    this._lastPollTs = Date.now(); // 毫秒
-    logInfo(`[${this.selfId}] _lastPollTs 已设置为当前时间，确保从最新会话开始轮询。`);
+    this.lastPollTs = Date.now(); // 毫秒
+    logInfo(`[${this.selfId}] lastPollTs 已设置为当前时间，确保从最新会话开始轮询。`);
 
     if (!this.http.hasCookies()) {
       logInfo(`[${this.selfId}] 警告：启动机器人时cookie未设置，可能导致轮询失败`)
@@ -294,6 +339,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
 
     setTimeout(() => {
       this.startPolling()
+
       logInfo(`[${this.selfId}] 轮询已启动，机器人状态: ${this.online ? 'online' : 'offline'}`)
     }, 2000)
 
@@ -303,15 +349,16 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
   async stop() {
     this.isStopping = true; // 停止
     logInfo(`[${this.selfId}] 正在停止机器人...`)
-    logInfo(`[${this.selfId}] 执行清理函数，数量: ${this._cleanupFunctions.length}`)
-    for (const cleanup of this._cleanupFunctions) {
+    logInfo(`[${this.selfId}] 执行清理函数，数量: ${this.cleanupFunctions.length}`)
+    for (const cleanup of this.cleanupFunctions) {
       try {
         cleanup()
       } catch (err) {
         loggerError(`[${this.selfId}] 执行清理函数时出错: `, err)
       }
     }
-    this._cleanupFunctions = []
+    this.cleanupFunctions = []
+
     await super.stop()
   }
 
@@ -503,5 +550,4 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       this.ctx.logger.warn(`发送撤回消息指令失败给 ${talkerId}，msg_key: ${messageId}`);
     }
   }
-
 }

@@ -4,7 +4,7 @@ import { Config, PluginConfig } from './schema'
 import { BilibiliDmAdapter } from './adapter'
 import { BilibiliService } from './service'
 import { BilibiliDmBot } from './bot'
-import { TestPlugin } from './test'
+import { BilibiliTestPlugin } from './test/test';
 import { Context, Logger } from 'koishi'
 
 import { promises as fs, existsSync } from 'node:fs'
@@ -22,7 +22,7 @@ export const reusable = true
 export const filter = false
 export { Config }
 const logger = new Logger(`Development:${name}-dev`)
-export * from './test';
+export * from './test/test'
 export const usage = `
 ---
 
@@ -215,7 +215,7 @@ export function apply(ctx: Context, config: PluginConfig) {
 
   // 开发模式且非依赖安装时 加载测试插件
   if (process.env.NODE_ENV === 'development' && !__dirname.includes('node_modules')) {
-    ctx.plugin(TestPlugin)
+    ctx.plugin(BilibiliTestPlugin)
   }
 
   ctx.on('ready', () => {

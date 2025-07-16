@@ -14,17 +14,18 @@ const MIXIN_KEY_ENCODE_TABLE = [
 ];
 
 export class HttpClient {
-  public http: Quester
   private cookies: Record<string, string> = {}
   private biliJct: string = ''
   private readonly deviceId: string
   private wbiKeys: WbiKeys | null = null
   private wbiKeysExpire = 0
   private wbiKeysFetchPromise: Promise<WbiKeys> | null = null // 作为锁
-  public isDisposed = false
   private avatarBase64: boolean
   private selfId: string
   private cookieVerified: boolean = false
+
+  public http: Quester
+  public isDisposed = false
 
   private async safeRequest<T>(
     requestFn: () => Promise<T>,

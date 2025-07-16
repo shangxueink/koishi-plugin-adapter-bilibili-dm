@@ -54,6 +54,7 @@ Bilibili 私信适配器 for Koishi
 
 Bilibili 图片设置了 `referrer` 策略。为了在koishi控制台正常显示这些图片，本插件提供了将 B站图片链接转换为 Base64 格式的配置项，以解决显示问题。
 
+
 ## 🚧 待办事项 / 已知问题
 
 ### 已知问题与限制
@@ -72,10 +73,98 @@ Bilibili 图片设置了 `referrer` 策略。为了在koishi控制台正常显�
 *   [ ] **优化前后端处理：** 增加代码的鲁棒性。
 *   [ ] **更规范的代码行为：** 优化代码结构、调用、服务。
 
+
+## 📚 支持的 API 调用
+
+<details>
+<summary>点击此展开 支持的API调用</summary>
+
+### `session.bot` 
+
+
+*   **`sendMessage(channelId: string, content: Fragment): Promise<string[]>`**
+    *   向指定频道发送消息。
+    *   示例: `await session.bot.sendMessage(session.channelId, 'Hello from Koishi!');`
+
+*   **`sendPrivateMessage(userId: string, content: Fragment): Promise<string[]>`**
+    *   向指定用户发送私信。
+    *   示例: `await session.bot.sendPrivateMessage(session.userId, 'Hello private!');`
+
+*   **`getMessage(channelId: string, messageId: string): Promise<any | undefined>`**
+    *   获取指定频道中的特定消息详情。
+    *   示例: `const message = await session.bot.getMessage(session.channelId, session.messageId);`
+
+*   **`deleteMessage(channelId: string, messageId: string): Promise<void>`**
+    *   撤回指定频道中的特定消息。
+    *   示例: `await session.bot.deleteMessage(session.channelId, messageId);`
+
+### `session.bot.internal`
+
+*   **`followUser(uid: string): Promise<boolean>`**
+    *   关注指定 UP 主。
+    *   示例: `await session.bot.internal.followUser('123456');`
+
+*   **`unfollowUser(uid: string): Promise<boolean>`**
+    *   取消关注指定 UP 主。
+    *   示例: `await session.bot.internal.unfollowUser('123456');`
+
+*   **`getFollowedUsers(): Promise<any[]>`**
+    *   获取当前账号关注的 UP 主列表。
+    *   示例: `const followedUsers = await session.bot.internal.getFollowedUsers();`
+
+*   **`getPersonalDynamics(uid: string): Promise<DynamicItem[]>`**
+    *   获取指定 UP 主的动态列表。
+    *   示例: `const personalDynamics = await session.bot.internal.getPersonalDynamics(session.userId);`
+
+*   **`getDynamicDetail(dynamicId: string): Promise<DynamicItem | null>`**
+    *   获取指定动态的详细信息。
+    *   示例: `const dynamicDetail = await session.bot.internal.getDynamicDetail('1234567890123456789');`
+
+*   **`getAllFollowedDynamics(): Promise<DynamicItem[]>`**
+    *   获取所有关注的 UP 主的最新动态列表。
+    *   示例: `const allFollowedDynamics = await session.bot.internal.getAllFollowedDynamics();`
+
+</details>
+
 ## 🤝 贡献
 
 欢迎提交 Pull Request 或 Issue 来帮助改进此项目。
 
+### 如何在项目模板中开发此仓库
+
+
+<details>
+<summary>点击此展开 如何在项目模板中开发此仓库</summary>
+
+1.  **创建项目模板** 🚀
+
+    ```shell
+    yarn create koishi
+    ```
+
+    一路回车，直到弹出 Koishi 的 WebUI。
+
+2.  **进入项目模板根目录** 📂
+
+    先在 Koishi 终端按下 `Ctrl + C` 退出项目模板，然后 `cd` 进入目录：
+
+    ```shell
+    cd koishi-app
+    ```
+
+3.  **克隆本仓库** ⬇️
+
+    ```shell
+    yarn clone Roberta001/koishi-plugin-adapter-bilibili-dm
+    ```
+
+4.  **以开发模式启动** 🚧
+    
+    ```shell
+    yarn dev
+    ```
+
+</details>
 
 ## 📄 许可证
 
