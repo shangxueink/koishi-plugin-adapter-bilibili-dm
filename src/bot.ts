@@ -4,11 +4,11 @@ import { Bot, Context, h, Fragment, Session } from 'koishi'
 import { PrivateMessage } from './types'
 import { PluginConfig } from './schema'
 import { HttpClient } from './http'
-import { Internal } from './internal' // 导入 Internal 类
+import { Internal } from './internal'
 
 declare module 'koishi' {
   interface Context {
-    internal: Internal; // 修改为 internal 属性
+    internal: Internal;
   }
 
   interface Events {
@@ -76,7 +76,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     this.lastPollTs = Date.now() - 20 * 1000 // 获取过去20秒的消息 (毫秒)
     this._maxCacheSize = this.pluginConfig.maxCacheSize || 1000;
 
-    this.internal = new Internal(this, this.ctx); // 实例化 Internal 类
+    this.internal = new Internal(this, this.ctx);
 
     logInfo(`[${this.selfId}] BilibiliDmBot实例创建完成，准备启动`)
   }
