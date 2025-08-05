@@ -7,22 +7,22 @@
         <p>机器人离线</p>
         <k-button @click="startLogin(data.selfId)">重新登录</k-button>
       </template>
-      
+
       <template v-else-if="data.status === 'error'">
         <p>{{ data.message }}</p>
         <k-button @click="startLogin(data.selfId)">重新登录</k-button>
       </template>
-      
+
       <template v-else-if="data.status === 'init'">
         <p>正在登录 Bilibili 客户端，请稍候...</p>
         <k-progress indeterminate />
       </template>
-      
+
       <template v-else-if="data.status === 'continue'">
         <p>{{ data.message }}</p>
         <k-progress indeterminate />
       </template>
-      
+
       <template v-else-if="data.status === 'success'">
         <p>{{ data.message }}</p>
         <div class="status-icon success">
@@ -30,7 +30,7 @@
         </div>
         <k-button @click="startLogin(data.selfId)">重新登录</k-button>
       </template>
-      
+
       <template v-else-if="data.status === 'qrcode'">
         <p v-if="data.message">{{ data.message }}</p>
         <div class="qrcode-container">
@@ -55,7 +55,7 @@
         </div>
       </template>
     </k-comment>
-    
+
     <!-- 当 data 为 null 时，显示加载中或者不显示任何内容 -->
     <div v-else>
       <!-- 不渲染任何东西 -->
@@ -65,7 +65,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch, onMounted, onUnmounted, inject } from 'vue'
-import { store, send } from "@koishijs/client"; 
+import { store, send } from "@koishijs/client";
 
 // 二维码状态
 const qrCodeExpired = ref(false)
@@ -88,7 +88,7 @@ console.groupEnd()
 */
 
 // 插件的预期名称 包名
-const PLUGIN_NAME = 'koishi-plugin-adapter-bilibili-dm'; 
+const PLUGIN_NAME = 'koishi-plugin-adapter-bilibili-dm';
 
 const data = computed(() => {
   // 名称不匹配，返回 null，阻止组件渲染
@@ -96,13 +96,13 @@ const data = computed(() => {
     console.warn(`[Bilibili DM] 当前插件名称 '${local.value?.name}' 不匹配预期 '${PLUGIN_NAME}'，跳过数据加载。`);
     return null;
   }
-  
+
   const currentSelfId = config.value?.selfId;
   if (!currentSelfId) {
     console.warn('[Bilibili DM] 无法获取当前配置的selfId');
     return null;
   }
-  
+
   const serviceId = `bilibili-dm-${currentSelfId}`;
   console.log(`[Bilibili DM] 尝试从服务 "${serviceId}" 获取数据，当前selfId: ${currentSelfId}`);
 
@@ -146,16 +146,16 @@ watch(() => data.value?.status, (newStatus: string | undefined, oldStatus: strin
 // 设置二维码过期计时器（二维码通常有效期为3分钟） B站好像是2分钟？
 function startQrCodeExpiryTimer() {
   clearQrCodeExpiryTimer()
-  
+
   qrCodeExpiryTime.value = Date.now() + 3 * 60 * 1000 // 3分钟后过期
   qrCodeExpired.value = false
-  
+
   // 每秒更新剩余时间
   qrCodeTimer.value = window.setInterval(() => {
     if (!qrCodeExpiryTime.value) return
-    
+
     const timeLeft = Math.max(0, qrCodeExpiryTime.value - Date.now())
-    
+
     if (timeLeft <= 0) {
       qrCodeExpired.value = true
       clearQrCodeExpiryTimer()
@@ -181,12 +181,12 @@ onUnmounted(() => {
 function startLogin(selfId: string) {
   qrCodeExpired.value = false
   qrCodeLoading.value = true
-  
+
   const loginEventName = `bilibili-dm-${selfId}/start-login`;
   console.log(`[Bilibili DM] 发送登录请求到事件: ${loginEventName}, selfId: ${selfId}, config.value?.selfId: ${config.value?.selfId}`);
-  
-  send(loginEventName as any, { 
-    selfId: selfId || config.value?.selfId 
+
+  send(loginEventName as any, {
+    selfId: selfId || config.value?.selfId
   })
 }
 
@@ -205,6 +205,7 @@ function getCommentType(status?: string) {
   padding: 0;
   margin-top: -1rem; // 顶部间距
   margin-bottom: -1rem; // 底部间距
+
   .qrcode-container {
     position: relative;
     display: inline-block;
@@ -215,13 +216,13 @@ function getCommentType(status?: string) {
     background-color: white;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
-  
+
   .qrcode {
     display: block;
     max-width: 200px;
     image-rendering: pixelated;
   }
-  
+
   .refresh-overlay {
     position: absolute;
     top: 0;
@@ -236,45 +237,46 @@ function getCommentType(status?: string) {
     color: white;
     border-radius: 8px;
   }
-  
+
   .qrcode-tip {
     font-size: 0.9rem;
     color: #666;
     margin-top: 0.5rem;
   }
-  
+
   .qrcode-actions {
     margin-top: 1rem;
     display: flex;
     gap: 0.5rem;
   }
-  
+
   .status-icon {
     font-size: 2rem;
     margin: 1rem 0;
-    
+
     &.success {
       color: #52c41a;
     }
   }
-  
+
   .k-button {
     margin-top: 0.5rem;
     margin-bottom: 0.8rem;
   }
-  
+
   .k-progress {
     margin-top: 1rem;
   }
-  
+
   .rotating {
     animation: rotate 1s linear infinite;
   }
-  
+
   @keyframes rotate {
     from {
       transform: rotate(0deg);
     }
+
     to {
       transform: rotate(360deg);
     }

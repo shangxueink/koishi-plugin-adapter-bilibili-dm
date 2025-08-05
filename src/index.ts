@@ -17,7 +17,10 @@ export let logInfo: (message: any, ...args: any[]) => void;
 let isConsoleEntryAdded = false;
 
 export const name = "adapter-bilibili-dm"
-export const inject = ["http", "i18n", "server", "logger", "console"]
+export const inject = {
+  required: ["http", "i18n", "server", "logger", "console"],
+  optional: ["notifier"]
+}
 export const reusable = true
 export const filter = false
 export { Config }

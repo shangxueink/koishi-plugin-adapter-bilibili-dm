@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-adapter-bilibili-dm",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "Bilibili Direct Message Adapter for Koishi\nBilibili 私信适配器",
   "typings": "lib/index.d.ts",
   "main": "lib/index.js",
@@ -51,8 +51,8 @@
     "koishi": "^4.16.0"
   },
   "dependencies": {
-    "@koishijs/plugin-console": "^5.30.9",
     "@koishijs/client": "^5.29.4",
+    "@koishijs/plugin-console": "^5.30.9",
     "axios": "^1.6.7",
     "qrcode": "^1.5.4",
     "uuid": "^9.0.1"
