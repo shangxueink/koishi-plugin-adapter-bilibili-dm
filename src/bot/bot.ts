@@ -486,6 +486,27 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     const [type, talkerId] = channelId.split(':')
     if (type !== 'private' || !talkerId) return []
 
+    // 创建会话对象用于事件触发
+    const session = this.session({
+      type: 'send',
+      platform: this.platform,
+      selfId: this.selfId,
+      timestamp: Date.now(),
+      channel: { 
+        id: channelId, 
+        type: type === 'private' ? 1 : 0 
+      },
+      guild: { 
+        id: talkerId 
+      },
+      message: {
+        elements: h.normalize(content)
+      }
+    })
+
+    // before-send 事件
+    this.ctx.emit('before-send'as keyof import('koishi').Events, session)
+
     const sentMessageIds: string[] = []
     logInfo(content)
 
@@ -561,6 +582,13 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
 
     await flushTextBuffer()
+
+    // 发送成功 - send 事件
+    if (sentMessageIds.length > 0) {
+      // 更新会话对象，添加消息ID
+      session.event.message.id = sentMessageIds[0]
+      this.ctx.emit('send', session)
+    }
 
     return sentMessageIds;
   }

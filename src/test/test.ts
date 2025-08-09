@@ -3,6 +3,13 @@ import { Context } from 'koishi'
 
 export function BilibiliTestPlugin(ctx: Context) {
 
+    // ctx.on('before-send', (session) => {
+    //      ctx.logger.info(session)
+    // })
+    // ctx.on('send', (session) => {
+    //      ctx.logger.info(session)
+    // })
+
 
     // ctx.middleware(async (session, next) => {
     //     if (session.platform !== 'bilibili') return next()
