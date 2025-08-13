@@ -33,7 +33,7 @@ export class DynamicAPI {
 
     // 存储最近的动态摘要信息
     private recentDynamics: DynamicSummary[] = []
-    private maxRecentCount: number = 10 // 存储最近10条动态的摘要
+    private maxRecentCount: number = 15 // 存储最近15条动态的摘要
 
     // 数据持久化路径
     private dataFilePath: string
@@ -392,17 +392,17 @@ export class DynamicAPI {
                 return
             }
 
-            // 取前10条动态作为初始状态
+            // 取前15条动态作为初始状态
             const recentDynamics = dynamics.slice(0, this.maxRecentCount)
             this.recentDynamics = recentDynamics.map(dynamic => this.dynamicToSummary(dynamic))
 
             // 保存到文件
             this.saveRecentDynamics()
 
-            logInfo(`初始化最近动态列表完成，共 ${this.recentDynamics.length} 条动态`)
+            logInfo(`初始化最近动态列表完成，共 ${this.recentDynamics.length} 条动态，即将打印前5条视检：`)
 
             // 输出最新几条动态的信息用于调试
-            this.recentDynamics.slice(0, 3).forEach((summary, index) => {
+            this.recentDynamics.slice(0, 5).forEach((summary, index) => {
                 logInfo(`  ${index + 1}. ${summary.authorName} (${summary.authorUid}) - ${summary.type} - ${new Date(summary.timestamp * 1000).toLocaleString()}`)
             })
 

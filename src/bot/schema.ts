@@ -15,6 +15,8 @@ export interface PluginConfig {
   pollAutoShutdownThreshold: number
   enableDynamicPolling: boolean
   dynamicPollInterval: number
+  enableLivePolling: boolean
+  livePollInterval: number
 }
 
 const defaultblockedUids = [
@@ -92,8 +94,10 @@ export const Config: Schema<PluginConfig> =
 
     Schema.object({
       enableDynamicPolling: Schema.boolean().default(true).description('启用动态监听功能，监听关注UP主的动态更新'),
-      dynamicPollInterval: Schema.number().default(60).description("动态轮询间隔时间（单位：秒）").min(30).max(300),
-    }).description('动态监听设置'),
+      dynamicPollInterval: Schema.number().default(30).description("动态轮询间隔时间（单位：秒）").min(10).max(300),
+      enableLivePolling: Schema.boolean().default(true).description('启用直播监听功能，监听关注UP主的直播状态变化'),
+      livePollInterval: Schema.number().default(30).description("直播轮询间隔时间（单位：秒）").min(10).max(300),
+    }).description('监听设置'),
 
     Schema.object({
       nestedblocked: Schema.object({

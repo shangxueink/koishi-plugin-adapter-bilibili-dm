@@ -797,6 +797,23 @@ export interface SearchOptions {
     categoryId?: number
 }
 
+// 直播事件数据类型
+export interface LiveEventData {
+    type: 'live_start' | 'live_end' | 'live_update'
+    user: {
+        mid: number
+        uname: string
+        face: string
+    }
+    room: {
+        room_id: number
+        title: string
+        jump_url: string
+    }
+    timestamp: number
+    rawData: any
+}
+
 // Internal API 接口定义
 export interface InternalInterface {
     // 用户关注相关

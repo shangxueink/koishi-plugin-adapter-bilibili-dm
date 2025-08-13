@@ -225,6 +225,43 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     this.internal.startDynamicPolling(dynamicInterval)
   }
 
+  private startLivePolling(): void {
+    if (!this.pluginConfig.enableLivePolling) {
+      logInfo(`[${this.selfId}] 直播监听已禁用`)
+      return
+    }
+
+    logInfo(`[${this.selfId}] 开始设置直播监听定时器...`)
+
+    if (!this.http.hasCookies()) {
+      logInfo(`[${this.selfId}]警告：启动直播监听时cookie未验证，将延迟启动直播监听`)
+      try {
+        this.ctx.setTimeout(() => {
+          if (!this.http.isDisposed && !this.isStopping) {
+            logInfo(`[${this.selfId}] 延迟后再次尝试启动直播监听...`)
+            this.startLivePolling()
+          } else {
+            logInfo(`[${this.selfId}]插件已停用或正在停止，跳过延迟后的直播监听启动`)
+          }
+        }, 5000)
+      } catch (err) {
+        if (err.code === 'INACTIVE_EFFECT') {
+          logInfo(`[${this.selfId}]上下文已不活跃，跳过设置延迟直播监听定时器`)
+        } else {
+          loggerError(`[${this.selfId}]设置延迟直播监听定时器时出错: `, err)
+        }
+      }
+      return
+    }
+
+    // 将秒转换为毫秒
+    const liveIntervalSeconds = this.pluginConfig.livePollInterval || 30
+    const liveInterval = liveIntervalSeconds * 1000
+
+    logInfo(`[${this.selfId}]cookie已验证，启动直播监听，轮询间隔: ${liveIntervalSeconds}秒 (${liveInterval}ms)`)
+    this.internal.startLivePolling(liveInterval)
+  }
+
   private startContinuousPolling(): void {
     if (!this.online || this.isStopping || this.http.isDisposed) {
       return
@@ -452,6 +489,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     setTimeout(() => {
       this.startPolling()
       this.startDynamicPolling()
+      this.startLivePolling()
 
       logInfo(`[${this.selfId}]轮询已启动，机器人状态: ${this.online ? 'online' : 'offline'} `)
     }, 2000)
@@ -467,6 +505,12 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     if (this.internal.isPollingActive()) {
       logInfo(`[${this.selfId}] 停止动态监听`);
       this.internal.stopDynamicPolling();
+    }
+
+    // 停止直播监听
+    if (this.internal.isLivePollingActive()) {
+      logInfo(`[${this.selfId}] 停止直播监听`);
+      this.internal.stopLivePolling();
     }
 
     logInfo(`[${this.selfId}]执行清理函数，数量: ${this.cleanupFunctions.length} `)
@@ -492,12 +536,12 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       platform: this.platform,
       selfId: this.selfId,
       timestamp: Date.now(),
-      channel: { 
-        id: channelId, 
-        type: type === 'private' ? 1 : 0 
+      channel: {
+        id: channelId,
+        type: type === 'private' ? 1 : 0
       },
-      guild: { 
-        id: talkerId 
+      guild: {
+        id: talkerId
       },
       message: {
         elements: h.normalize(content)
@@ -505,7 +549,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     })
 
     // before-send 事件
-    this.ctx.emit('before-send'as keyof import('koishi').Events, session)
+    this.ctx.emit('before-send' as keyof import('koishi').Events, session)
 
     const sentMessageIds: string[] = []
     logInfo(content)

@@ -65,6 +65,12 @@ declare module 'koishi' {
     'bilibili/dynamic-pgc-update': (data: DynamicEventData) => void
     'bilibili/dynamic-ugc-season-update': (data: DynamicEventData) => void
     'bilibili/dynamic-unknown-update': (data: DynamicEventData) => void
+
+    // 直播相关事件
+    'bilibili/live-update': (data: import('./bilibiliAPI/apis/types').LiveEventData) => void
+    'bilibili/live-start': (data: import('./bilibiliAPI/apis/types').LiveEventData) => void
+    'bilibili/live-end': (data: import('./bilibiliAPI/apis/types').LiveEventData) => void
+    'bilibili/live-info-update': (data: import('./bilibiliAPI/apis/types').LiveEventData) => void
   }
 }
 

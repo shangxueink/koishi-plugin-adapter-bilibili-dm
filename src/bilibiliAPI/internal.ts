@@ -3,6 +3,7 @@ import { Context } from 'koishi'
 import { DynamicAPI } from './apis/dynamic'
 import { UserAPI } from './apis/user'
 import { SearchAPI } from './apis/search'
+import { LiveAPI } from './apis/live'
 import {
     DynamicItem,
     FollowingUser,
@@ -22,6 +23,7 @@ export class Internal implements InternalInterface {
     private dynamicAPI: DynamicAPI
     private userAPI: UserAPI
     private searchAPI: SearchAPI
+    private liveAPI: LiveAPI
 
     constructor(bot: BilibiliDmBot, ctx: Context) {
         this.bot = bot
@@ -29,6 +31,7 @@ export class Internal implements InternalInterface {
         this.dynamicAPI = new DynamicAPI(bot, ctx)
         this.userAPI = new UserAPI(bot)
         this.searchAPI = new SearchAPI(bot)
+        this.liveAPI = new LiveAPI(bot, ctx)
     }
 
     // #region 用户关注相关API
@@ -232,6 +235,73 @@ export class Internal implements InternalInterface {
      */
     async searchUpUsers(keyword: string, options?: SearchOptions): Promise<SearchUser[]> {
         return this.searchAPI.searchUpUsers(keyword, options)
+    }
+
+    // #region 直播相关API
+
+    /**
+     * 获取当前正在直播的UP主列表
+     * @returns Promise<any[]> 正在直播的UP主列表
+     */
+    async getLiveUsers(): Promise<any[]> {
+        return this.liveAPI.getLiveUsers()
+    }
+
+    /**
+     * 开始监听直播状态更新
+     * @param interval 轮询间隔（毫秒），默认30秒
+     */
+    startLivePolling(interval: number = 30000): void {
+        this.liveAPI.startLivePolling(interval)
+    }
+
+    /**
+     * 停止监听直播状态更新
+     */
+    stopLivePolling(): void {
+        this.liveAPI.stopLivePolling()
+    }
+
+    /**
+     * 获取直播监听状态
+     */
+    isLivePollingActive(): boolean {
+        return this.liveAPI.isPollingActive()
+    }
+
+    /**
+     * 设置直播轮询间隔
+     */
+    setLivePollInterval(interval: number): void {
+        this.liveAPI.setPollInterval(interval)
+    }
+
+    /**
+     * 获取当前直播用户摘要（用于调试）
+     */
+    getCurrentLiveUsersSummary(): any[] {
+        return this.liveAPI.getCurrentLiveUsersSummary()
+    }
+
+    /**
+     * 手动触发一次直播状态检查
+     */
+    async manualLiveCheck(): Promise<void> {
+        return this.liveAPI.manualCheck()
+    }
+
+    /**
+     * 获取指定UP主的直播状态
+     */
+    async getUserLiveStatus(mid: number): Promise<any> {
+        return this.liveAPI.getUserLiveStatus(mid)
+    }
+
+    /**
+     * 检查指定UP主是否正在直播
+     */
+    async isUserLive(mid: number): Promise<boolean> {
+        return this.liveAPI.isUserLive(mid)
     }
 
 }
