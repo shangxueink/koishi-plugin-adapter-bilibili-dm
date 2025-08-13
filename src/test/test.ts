@@ -1,3 +1,4 @@
+// src\test\test.ts
 import { Context } from 'koishi'
 // import {  } from 'koishi-plugin-adapter-bilibili-dm'
 

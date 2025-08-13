@@ -1,9 +1,8 @@
-
 //  src\adapter.ts
 import { logInfo, loggerError, loggerInfo } from './../index'
 import { BilibiliService } from './service'
 import { Adapter, Context } from 'koishi'
-import { PluginConfig } from './schema'
+import { PluginConfig } from './types'
 import { BilibiliDmBot } from './bot'
 
 import * as fs from 'node:fs/promises'

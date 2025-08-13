@@ -1,46 +1,17 @@
-// src/bilibiliAPI/apis/live.ts
+// src\bilibiliAPI\apis\live.ts
 import { BilibiliDmBot } from '../../bot/bot'
 import { Context } from 'koishi'
 import { logInfo, loggerError } from '../../index'
 import {
     BilibiliResponse,
-    LiveEventData
+    LiveEventData,
+    LiveUser,
+    LivePortalResponse,
+    LiveSummary
 } from './types'
 import crypto from 'crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-
-// 直播用户信息
-interface LiveUser {
-    face: string
-    is_reserve_recall: boolean
-    jump_url: string
-    mid: number
-    room_id: number
-    title: string
-    uname: string
-}
-
-// 直播门户响应
-interface LivePortalResponse {
-    live_users: {
-        count: number
-        group: string
-        items: LiveUser[]
-    }
-    my_info: any
-    up_list: any
-}
-
-// 直播摘要信息
-interface LiveSummary {
-    mid: number
-    uname: string
-    room_id: number
-    title: string
-    hash: string // 内容hash，用于检测变化
-    timestamp: number // 检测时间戳
-}
 
 export class LiveAPI {
     private bot: BilibiliDmBot

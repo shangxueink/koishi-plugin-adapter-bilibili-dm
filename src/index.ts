@@ -1,6 +1,7 @@
 //  src\index.ts
 import { DataService } from '@koishijs/plugin-console'
-import { Config, PluginConfig } from './bot/schema'
+import { Config } from './bot/schema'
+import { PluginConfig } from './bot/types'
 import { BilibiliDmAdapter } from './bot/adapter'
 import { BilibiliService } from './bot/service'
 import { BilibiliDmBot } from './bot/bot'
@@ -24,8 +25,9 @@ export const inject = {
 export const reusable = true
 export const filter = false
 export { Config }
+
 const logger = new Logger(`Development:${name}-dev`)
-export * from './test/test'
+
 export const usage = `
 ---
 
@@ -34,6 +36,11 @@ export const usage = `
 
 ---
 `
+
+export * from './test/test'
+export * from './bot/types'
+export * from './bilibiliAPI'
+
 export interface BotStatus {
   status: 'init' | 'qrcode' | 'continue' | 'success' | 'error' | 'offline'
   selfId: string
@@ -42,7 +49,6 @@ export interface BotStatus {
   pluginName?: string;
 }
 
-export type { BotLoginStatus } from './bot/service'
 
 // 自定义事件
 declare module 'koishi' {
@@ -55,16 +61,16 @@ declare module 'koishi' {
     [key: `bilibili-dm-${string}/status-update`]: (status: BotStatus) => void
 
     // 动态相关事件
-    'bilibili/dynamic-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-video-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-image-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-text-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-article-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-live-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-forward-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-pgc-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-ugc-season-update': (data: DynamicEventData) => void
-    'bilibili/dynamic-unknown-update': (data: DynamicEventData) => void
+    'bilibili/dynamic-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-video-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-image-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-text-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-article-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-live-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-forward-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-pgc-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-ugc-season-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
+    'bilibili/dynamic-unknown-update': (data: import('./bilibiliAPI/apis/types').DynamicEventData) => void
 
     // 直播相关事件
     'bilibili/live-update': (data: import('./bilibiliAPI/apis/types').LiveEventData) => void
@@ -74,46 +80,6 @@ declare module 'koishi' {
   }
 }
 
-// 动态事件数据类型
-export interface DynamicEventData {
-  dynamicId: string
-  type: string
-  author: {
-    uid: number
-    name: string
-    face: string
-    action: string
-    timestamp: number
-  }
-  content: {
-    text: string
-    type: string
-    video?: {
-      aid: string
-      bvid: string
-      title: string
-      desc: string
-      cover: string
-      url: string
-    }
-    images?: string[]
-    article?: {
-      id: number
-      title: string
-      desc: string
-      covers: string[]
-      url: string
-    }
-    live?: {
-      id: number
-      title: string
-      cover: string
-      url: string
-      isLive: boolean
-    }
-  }
-  rawData: any
-}
 
 declare module '@koishijs/plugin-console' {
   namespace Console {

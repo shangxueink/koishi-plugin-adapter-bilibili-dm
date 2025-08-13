@@ -94,3 +94,30 @@ export interface UploadImageData {
   image_height: number // 图片高度
   img_size?: number // 图片大小 (字节)
 }
+
+// 机器人登录状态
+export type BotLoginStatus = {
+  status: 'init' | 'qrcode' | 'continue' | 'success' | 'error' | 'offline'
+  selfId: string
+  image?: string
+  message?: string
+}
+
+// 插件配置接口
+export interface PluginConfig {
+  selfId: string
+  loggerinfo: boolean
+  avatarBase64: boolean
+  pollInterval: number
+  maxCacheSize: number
+  nestedblocked: {
+    blockedUids: { name: string; uid: string; }[]
+  }
+  ignoreOfflineMessages: boolean
+  pollFailureThreshold: number
+  pollAutoShutdownThreshold: number
+  enableDynamicPolling: boolean
+  dynamicPollInterval: number
+  enableLivePolling: boolean
+  livePollInterval: number
+}

@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
-import { BilibiliDmBot } from '../../bot/bot'
+// src\bilibiliAPI\apis\types.ts
 
 // 基础响应接口
 export interface BilibiliResponse<T = any> {
@@ -797,6 +795,48 @@ export interface SearchOptions {
     categoryId?: number
 }
 
+// 动态摘要信息（用于监听）
+export interface DynamicSummary {
+    id: string
+    authorUid: number
+    authorName: string
+    type: string
+    timestamp: number
+    hash: string // 内容hash，用于检测变化
+}
+
+// 直播用户信息
+export interface LiveUser {
+    face: string
+    is_reserve_recall: boolean
+    jump_url: string
+    mid: number
+    room_id: number
+    title: string
+    uname: string
+}
+
+// 直播门户响应
+export interface LivePortalResponse {
+    live_users: {
+        count: number
+        group: string
+        items: LiveUser[]
+    }
+    my_info: any
+    up_list: any
+}
+
+// 直播摘要信息（用于监听）
+export interface LiveSummary {
+    mid: number
+    uname: string
+    room_id: number
+    title: string
+    hash: string // 内容hash，用于检测变化
+    timestamp: number // 检测时间戳
+}
+
 // 直播事件数据类型
 export interface LiveEventData {
     type: 'live_start' | 'live_end' | 'live_update'
@@ -823,6 +863,7 @@ export interface InternalInterface {
     getUserInfo(uid: string): Promise<any>
     isFollowing(uid: string): Promise<boolean>
     batchCheckFollowing(uids: string[]): Promise<Record<string, boolean>>
+    getTokenByUid(uid: string): Promise<any | null>
 
     // 动态相关
     getAllFollowedDynamics(offset?: string, updateBaseline?: string): Promise<DynamicItem[]>
@@ -845,4 +886,15 @@ export interface InternalInterface {
     searchArticles(keyword: string, options?: SearchOptions): Promise<SearchArticle[]>
     searchUsersByName(username: string, exactMatch?: boolean): Promise<SearchUser[]>
     searchUpUsers(keyword: string, options?: SearchOptions): Promise<SearchUser[]>
+
+    // 直播相关
+    getLiveUsers(): Promise<LiveUser[]>
+    startLivePolling(interval?: number): void
+    stopLivePolling(): void
+    isLivePollingActive(): boolean
+    setLivePollInterval(interval: number): void
+    getCurrentLiveUsersSummary(): LiveSummary[]
+    manualLiveCheck(): Promise<void>
+    getUserLiveStatus(mid: number): Promise<LiveUser | null>
+    isUserLive(mid: number): Promise<boolean>
 }

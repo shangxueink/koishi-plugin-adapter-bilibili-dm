@@ -1,19 +1,13 @@
 //  src\service.ts
 import { BotStatus, logInfo, loggerError, loggerInfo } from '../index'
-import { PluginConfig } from './schema'
+import { PluginConfig } from './types'
 import { BilibiliDmBot } from './bot'
+import { BotLoginStatus } from './types'
 import { Context } from 'koishi'
 import QRCode from 'qrcode'
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-
-export type BotLoginStatus = {
-    status: 'init' | 'qrcode' | 'continue' | 'success' | 'error' | 'offline'
-    selfId: string
-    image?: string
-    message?: string
-}
 
 export class BilibiliService {
     private status: Record<string, BotStatus> = {}

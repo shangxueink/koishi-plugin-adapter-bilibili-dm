@@ -1,23 +1,6 @@
 //  src\schema.ts
 import { Schema } from 'koishi'
-
-export interface PluginConfig {
-  selfId: string
-  loggerinfo: boolean
-  avatarBase64: boolean
-  pollInterval: number
-  maxCacheSize: number
-  nestedblocked: {
-    blockedUids: { name: string; uid: string; }[]
-  }
-  ignoreOfflineMessages: boolean
-  pollFailureThreshold: number
-  pollAutoShutdownThreshold: number
-  enableDynamicPolling: boolean
-  dynamicPollInterval: number
-  enableLivePolling: boolean
-  livePollInterval: number
-}
+import { PluginConfig } from './types'
 
 const defaultblockedUids = [
   {

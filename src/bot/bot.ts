@@ -3,7 +3,7 @@ import { logInfo, loggerError, loggerInfo } from '../index'
 import { } from '@koishijs/plugin-notifier'
 import { Bot, Context, h, Fragment, Session } from 'koishi'
 import { PrivateMessage } from './types'
-import { PluginConfig } from './schema'
+import { PluginConfig } from './types'
 import { HttpClient } from './http'
 import { Internal } from '../bilibiliAPI/internal'
 

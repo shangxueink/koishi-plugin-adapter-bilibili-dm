@@ -1,3 +1,4 @@
+// src\bilibiliAPI\internal.ts
 import { BilibiliDmBot } from '../bot/bot'
 import { Context } from 'koishi'
 import { DynamicAPI } from './apis/dynamic'
@@ -88,6 +89,15 @@ export class Internal implements InternalInterface {
      */
     async batchCheckFollowing(uids: string[]): Promise<Record<string, boolean>> {
         return this.userAPI.batchCheckFollowing(uids)
+    }
+
+    /**
+     * 获取指定UID的登录cookie数据
+     * @param uid 用户UID
+     * @returns Promise<any | null> 返回cookie数据，如果文件不存在则返回null
+     */
+    async getTokenByUid(uid: string): Promise<any | null> {
+        return this.userAPI.getTokenByUid(uid)
     }
 
     // #region 动态相关API

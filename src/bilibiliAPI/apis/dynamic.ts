@@ -7,21 +7,12 @@ import {
     DynamicFeedResponse,
     DynamicDetailResponse,
     BilibiliResponse,
-    DynamicEventData
+    DynamicEventData,
+    DynamicSummary
 } from './types'
 import crypto from 'crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-
-// 动态摘要信息
-interface DynamicSummary {
-    id: string
-    authorUid: number
-    authorName: string
-    type: string
-    timestamp: number
-    hash: string // 内容hash，用于检测变化
-}
 
 export class DynamicAPI {
     private bot: BilibiliDmBot
