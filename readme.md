@@ -4,7 +4,7 @@
 
 Bilibili 私信适配器 for Koishi
 
-![preview.gif](https://raw.githubusercontent.com/Roberta001/koishi-plugin-adapter-bilibili-dm/refs/heads/main/screenshots/preview.gif)
+![preview.gif](https://raw.githubusercontent.com/Roberta001/koishi-plugin-adapter-bilibili-dm/refs/heads/docs/screenshot/preview.gif)
 
 ## 快速开始
 
