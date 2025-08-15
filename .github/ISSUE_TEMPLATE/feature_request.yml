@@ -18,15 +18,6 @@ body:
       required: true
 
   - type: textarea
-    id: motivation
-    attributes:
-      label: 💡 为什么需要这个功能？
-      description: 描述这个功能解决了什么问题或带来什么价值
-      placeholder: 解释这个功能的必要性...
-    validations:
-      required: true
-
-  - type: textarea
     id: use-cases
     attributes:
       label: 🎯 使用场景
@@ -37,21 +28,6 @@ body:
         - 在...情况下，能够...
     validations:
       required: true
-
-  - type: checkboxes
-    id: related-features
-    attributes:
-      label: 🔗 相关功能
-      description: 这个功能与哪些现有功能相关？
-      options:
-        - label: 私信收发
-        - label: 图片上传
-        - label: 用户信息获取
-        - label: 直播监控
-        - label: 扫码登录
-        - label: 多开支持
-        - label: WebUI 界面
-        - label: 配置管理
 
   - type: dropdown
     id: priority
