@@ -65,14 +65,21 @@ export const Config: Schema<PluginConfig> =
   Schema.intersect([
 
     Schema.object({
-      selfId: Schema.string().required().description('要登录的账号UID<br>如何查找UID？[点我查看方法](https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/blob/main/readme.md#%EF%B8%8F-%E9%85%8D%E7%BD%AE)'),
+      selfId: Schema.string().required()
+        .pattern(/^\d+$/)
+        .description('要登录的账号UID（纯数字）<br>如何查找UID？[点我查看方法](https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/blob/main/readme.md#%EF%B8%8F-%E9%85%8D%E7%BD%AE)'),
     }).description('基础设置'),
 
     Schema.object({
       avatarBase64: Schema.boolean().default(true).description('请求base64头像数据 以解决控制台显示问题'),
-      pollInterval: Schema.number().default(3000).description("轮询消息的间隔时间（单位：毫秒）").min(1000).max(60000),
-      maxCacheSize: Schema.number().default(1000).description("缓存接收的消息ID，以避免轮询特性导致的消息重复（单位：条）"),
-      ignoreOfflineMessages: Schema.boolean().default(true).description('开启后，仅响应机器人上线后的未读消息。<br>否则可能会出现一瞬间响应历史消息的情况哦~'),
+      pollInterval: Schema.number().default(3000).min(1000).max(60000).step(500)
+        .description("轮询消息的间隔时间（单位：毫秒）"),
+      maxCacheSize: Schema.number().default(1000).min(100).max(10000).step(100)
+        .description("缓存接收的消息ID，以避免轮询特性导致的消息重复（单位：条）"),
+      ignoreOfflineMessages: Schema.boolean().default(true)
+        .description('开启后，仅响应机器人上线后的未读消息。<br>否则可能会出现一瞬间响应历史消息的情况哦~'),
+      requestTimeout: Schema.number().default(10000).min(3000).max(30000).step(1000)
+        .description('HTTP请求超时时间（单位：毫秒）'),
     }).description('进阶设置'),
 
     Schema.object({

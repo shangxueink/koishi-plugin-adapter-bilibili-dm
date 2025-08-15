@@ -1,6 +1,6 @@
 {
   "name": "koishi-plugin-adapter-bilibili-dm",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "Bilibili Direct Message Adapter for Koishi\nBilibili 私信适配器",
   "typings": "lib/index.d.ts",
   "main": "lib/index.js",
@@ -17,7 +17,7 @@
     "leafingxyz <2596628651@qq.com>"
   ],
   "bugs": {
-    "url": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/issues"
+    "url": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm/issues/new/choose"
   },
   "homepage": "https://github.com/Roberta001/koishi-plugin-adapter-bilibili-dm",
   "scripts": {

@@ -1,11 +1,12 @@
 //  src\bot.ts
-import { logInfo, loggerError, loggerInfo } from '../index'
+import { logInfo, loggerError } from '../index'
 import { } from '@koishijs/plugin-notifier'
-import { Bot, Context, h, Fragment, Session } from 'koishi'
+import { Bot, Context, h, Fragment, Universal } from 'koishi'
 import { PrivateMessage } from './types'
 import { PluginConfig } from './types'
 import { HttpClient } from './http'
 import { Internal } from '../bilibiliAPI/internal'
+import { BilibiliMessageEncoder } from './messageEncoder'
 
 declare module 'koishi' {
   interface Context {
@@ -48,6 +49,8 @@ declare module 'koishi' {
 }
 
 export class BilibiliDmBot extends Bot<Context, PluginConfig> {
+  static inject = ['notifier']
+
   private lastPollTs: number = 0 // 毫秒
   private processedMsgIds: Set<string> = new Set()
   private readonly _maxCacheSize: number
@@ -59,7 +62,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
 
   public readonly http: HttpClient
   public readonly pluginConfig: PluginConfig
-  public readonly internal: Internal; // 修改为 internal 属性
+  public readonly internal: Internal
 
   constructor(public ctx: Context, config: PluginConfig) {
     super(ctx, config, 'bilibili')
@@ -458,29 +461,18 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
 
     if (!contentFragment) return
-    logInfo(`正在获取用户昵称头像`)
-    let userInfo
-    try {
-      userInfo = await this.http.getUser(msg.sender_uid);
-    } catch (e) {
-      loggerError(`头像昵称信息获取失败: `, e)
-    }
+
+    // 获取用户信息
+    const user = await this.getUser(msg.sender_uid)
 
     const session = this.session({
       type: 'message',
-      platform: this.platform,
-      selfId: this.selfId,
       timestamp: msg.timestamp * 1000, // 毫秒
       channel: {
-        id: sessionType === 1 ? `private:${talkerId} ` : `${talkerId} `,
-        type: sessionType === 1 ? 1 : 0,
+        id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`,
+        type: sessionType === 1 ? Universal.Channel.Type.DIRECT : Universal.Channel.Type.TEXT,
       },
-      user: {
-        id: msg.sender_uid,
-        name: userInfo.nickname,
-        username: userInfo.nickname,
-        avatar: userInfo.avatar,
-      },
+      user,
       message: {
         id: msg.msg_key,
         elements: h.normalize(contentFragment),
@@ -498,10 +490,11 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     if (msg.msg_status === 1) {
       this.dispatch(this.session({
         type: 'message-deleted',
-        platform: this.platform,
-        selfId: this.selfId,
         timestamp: Date.now(),
-        channel: { id: sessionType === 1 ? `private:${talkerId} ` : `${talkerId} `, type: sessionType === 1 ? 1 : 0 },
+        channel: {
+          id: sessionType === 1 ? `private:${talkerId}` : `${talkerId}`,
+          type: sessionType === 1 ? Universal.Channel.Type.DIRECT : Universal.Channel.Type.TEXT
+        },
         user: { id: msg.sender_uid },
         message: { id: msg.msg_key }
       }))
@@ -524,8 +517,10 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
 
     if (!this.http.hasCookies()) {
       logInfo(`[${this.selfId}]警告：启动机器人时cookie未设置，可能导致轮询失败`)
+      this.status = Universal.Status.DISCONNECT
     } else {
       logInfo(`[${this.selfId}]cookie已设置，准备开始轮询`)
+      this.status = Universal.Status.ONLINE
     }
 
     setTimeout(() => {
@@ -533,14 +528,15 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       this.startDynamicPolling()
       this.startLivePolling()
 
-      logInfo(`[${this.selfId}]轮询已启动，机器人状态: ${this.online ? 'online' : 'offline'} `)
+      logInfo(`[${this.selfId}]轮询已启动，机器人状态: ${this.status}`)
     }, 2000)
 
-    logInfo(`[${this.selfId}]机器人启动完成，状态: ${this.online ? 'online' : 'offline'} `)
+    logInfo(`[${this.selfId}]机器人启动完成，状态: ${this.status}`)
   }
 
   async stop() {
-    this.isStopping = true; // 停止
+    this.isStopping = true
+    this.status = Universal.Status.DISCONNECT
     logInfo(`[${this.selfId}] 正在停止机器人...`)
 
     // 停止动态监听
@@ -568,207 +564,120 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     await super.stop()
   }
 
+  async getSelf(): Promise<Universal.User> {
+    return {
+      id: this.selfId,
+      name: this.user.name || '',
+      avatar: this.user.avatar || '',
+      username: this.user.username || ''
+    }
+  }
+
+  async getUser(userId: string): Promise<Universal.User> {
+    try {
+      const userInfo = await this.http.getUser(userId)
+      return {
+        id: userId,
+        name: userInfo?.nickname || '',
+        avatar: userInfo?.avatar || '',
+        username: userInfo?.nickname || ''
+      }
+    } catch (error) {
+      loggerError(`获取用户信息失败: ${userId}`, error)
+      return {
+        id: userId,
+        name: '未知用户',
+        avatar: '',
+        username: '未知用户'
+      }
+    }
+  }
+
   async sendMessage(channelId: string, content: Fragment): Promise<string[]> {
     const [type, talkerId] = channelId.split(':')
     if (type !== 'private' || !talkerId) return []
 
-    // 创建会话对象用于事件触发
-    const session = this.session({
-      type: 'send',
-      platform: this.platform,
-      selfId: this.selfId,
-      timestamp: Date.now(),
-      channel: {
-        id: channelId,
-        type: type === 'private' ? 1 : 0
-      },
-      guild: {
-        id: talkerId
-      },
-      message: {
-        elements: h.normalize(content)
-      }
-    })
-
-    // before-send 事件
-    this.ctx.emit('before-send' as keyof import('koishi').Events, session)
-
-    const sentMessageIds: string[] = []
     logInfo(content)
 
-    const processElement = (el: h): h[] => {
-      if (el.type === 'p') {
-        return [h.text('\n'), ...(el.children || []).flatMap(processElement), h.text('\n')]
-      }
-      if (el.type === 'br') {
-        return [h.text('\n')]
-      }
-      if (el.type === 'i18n') {
-        const locales = this.ctx.i18n?.fallback([]) || []
-        return this.ctx.i18n?.render(locales, [el.attrs?.path], el.attrs) || []
-      }
-      if (el.children) {
-        return [{ ...el, children: el.children.flatMap(processElement) }]
-      }
-      return [el]
-    }
+    const encoder = new BilibiliMessageEncoder(this, channelId, undefined, {})
+    const messages = await encoder.send(content)
 
-    const elements = h.normalize(content).flatMap(processElement)
-    let textBuffer = ''
-
-    const flushTextBuffer = async () => {
-      if (textBuffer) {
-        const msgContent = { content: textBuffer.replace(/\n+/g, '\n').trim() }
-        const msgKey = await this.http.sendMessage(this.selfId, Number(talkerId), JSON.stringify(msgContent), 1)
-        if (msgKey) {
-          sentMessageIds.push(msgKey);
-        }
-        textBuffer = ''
-      }
-    }
-
-    for (const element of elements) {
-      try {
-        if (element.type === 'text' && element.attrs.content) {
-          textBuffer += element.attrs.content
-        } else if ((element.type === 'image' || element.type === 'img') && (element.attrs.url || element.attrs.src)) {
-          await flushTextBuffer()
-          const elementAttrsUrl = element.attrs.url || element.attrs.src
-          const imageData = await this.http.safeFileRequest(elementAttrsUrl, `下载图片失败，URL: ${elementAttrsUrl} `)
-
-          if (!imageData) {
-            loggerError(`图片下载失败，URL: ${elementAttrsUrl} `)
-            continue
-          }
-
-          const imageBuffer = imageData.data
-          const imageType = imageData.mime || imageData.type
-
-          const uploadResult = await this.http.uploadImage(imageBuffer);
-          if (!uploadResult) {
-            loggerError(`图片上传失败，URL: ${elementAttrsUrl} `)
-            continue
-          }
-          const msgContent = {
-            url: uploadResult.image_url,
-            width: uploadResult.image_width,
-            height: uploadResult.image_height,
-            imageType: imageType,
-            size: uploadResult.img_size || 0,
-            original: 1
-          }
-          const msgKey = await this.http.sendMessage(this.selfId, Number(talkerId), JSON.stringify(msgContent), 2)
-          if (msgKey) {
-            sentMessageIds.push(msgKey);
-          }
-        }
-      } catch (error) {
-        loggerError('发送消息元素时发生错误: %o', error)
-      }
-    }
-
-    await flushTextBuffer()
-
-    // 发送成功 - send 事件
-    if (sentMessageIds.length > 0) {
-      // 更新会话对象，添加消息ID
-      session.event.message.id = sentMessageIds[0]
-      this.ctx.emit('send', session)
-    }
-
-    return sentMessageIds;
+    return messages.map(message => message.id).filter(id => id !== undefined) as string[]
   }
 
   async sendPrivateMessage(userId: string, content: Fragment): Promise<string[]> {
     return this.sendMessage(`private:${userId} `, content);
   }
 
-  async getMessage(channelId: string, messageId: string): Promise<any | undefined> {
-    logInfo(`尝试获取 ${channelId} 中的消息 ${messageId} `);
-    const [type, talkerIdStr] = channelId.split(':');
-    const talkerId = Number(talkerIdStr);
-    const sessionType = type === 'private' ? 1 : 0;    //  1 为私聊，0 为其他
+  async getMessage(channelId: string, messageId: string): Promise<Universal.Message | undefined> {
+    logInfo(`尝试获取 ${channelId} 中的消息 ${messageId}`)
+    const [type, talkerIdStr] = channelId.split(':')
+    const talkerId = Number(talkerIdStr)
+    const sessionType = type === 'private' ? 1 : 0
 
-    const newSessionsData = await this.http.getNewSessions(0);
+    const newSessionsData = await this.http.getNewSessions(0)
     if (!newSessionsData || !newSessionsData.session_list) {
-      this.ctx.logger.warn(`获取会话列表失败，无法获取消息 ${messageId} `);
-      return undefined;
+      loggerError(`获取会话列表失败，无法获取消息 ${messageId}`)
+      return undefined
     }
 
-    const sessionInfo = newSessionsData.session_list.find(s => s.talker_id === talkerId && s.session_type === sessionType);
+    const sessionInfo = newSessionsData.session_list.find(s => s.talker_id === talkerId && s.session_type === sessionType)
     if (!sessionInfo) {
-      this.ctx.logger.warn(`未找到与 ${channelId} 匹配的会话信息，无法获取消息 ${messageId} `);
-      return undefined;
+      loggerError(`未找到与 ${channelId} 匹配的会话信息，无法获取消息 ${messageId}`)
+      return undefined
     }
 
-    // 使用会话的最大序列号作为起始点获取消息
-    const messageData = await this.http.fetchSessionMessages(
-      talkerId,
-      sessionType,
-      0, // 从最早的消息开始查找 
-    );
-
+    const messageData = await this.http.fetchSessionMessages(talkerId, sessionType, 0)
     if (!messageData || !messageData.messages) {
-      this.ctx.logger.warn(`获取会话 ${talkerId} 的消息失败，无法获取消息 ${messageId} `);
-      return undefined;
+      loggerError(`获取会话 ${talkerId} 的消息失败，无法获取消息 ${messageId}`)
+      return undefined
     }
 
-    const targetMsg = messageData.messages.find(msg => msg.msg_key === messageId);
-
+    const targetMsg = messageData.messages.find(msg => msg.msg_key === messageId)
     if (!targetMsg) {
-      this.ctx.logger.warn(`在会话 ${talkerId} 消息中未找到消息 ${messageId} `);
-      return undefined;
+      loggerError(`在会话 ${talkerId} 消息中未找到消息 ${messageId}`)
+      return undefined
     }
 
-    let contentFragment: Fragment;
+    let contentFragment: Fragment
     try {
-      const parsedContent = JSON.parse(targetMsg.content);
+      const parsedContent = JSON.parse(targetMsg.content)
       switch (targetMsg.msg_type) {
         case 1:
-          contentFragment = h.parse(parsedContent.content);
-          break;
+          contentFragment = h.parse(parsedContent.content)
+          break
         case 2:
-          contentFragment = h('image', { url: parsedContent.url });
-          break;
+          contentFragment = h('image', { url: parsedContent.url })
+          break
         case 5:
-          contentFragment = h('text', { content: `[消息已撤回]` });
-          break;
+          contentFragment = h('text', { content: `[消息已撤回]` })
+          break
         default:
-          this.ctx.logger.warn(`不支持的消息类型: ${targetMsg.msg_type}, 内容: ${targetMsg.content} `);
-          contentFragment = `[Unsupported message type: ${targetMsg.msg_type}]`;
-          break;
+          loggerError(`不支持的消息类型: ${targetMsg.msg_type}, 内容: ${targetMsg.content}`)
+          contentFragment = `[Unsupported message type: ${targetMsg.msg_type}]`
+          break
       }
     } catch (e) {
-      this.ctx.logger.error(`解析消息内容失败: ${targetMsg.content}, 错误: `, e);
-      contentFragment = '[消息解析失败]';
+      loggerError(`解析消息内容失败: ${targetMsg.content}, 错误: `, e)
+      contentFragment = '[消息解析失败]'
     }
 
-    const userInfo = await this.http.getUser(targetMsg.sender_uid);
+    const user = await this.getUser(targetMsg.sender_uid)
 
-    const message: any = {
-      messageId: targetMsg.msg_key,
+    const message: Universal.Message = {
       id: targetMsg.msg_key,
       elements: h.normalize(contentFragment),
       content: h.normalize(contentFragment).join(''),
-      user: {
-        id: targetMsg.sender_uid,
-        name: userInfo?.nickname || '',
-        userId: targetMsg.sender_uid,
-        avatar: userInfo?.avatar || '',
-        username: userInfo?.nickname || '',
-      },
-      timestamp: targetMsg.timestamp * 1000, // 转换为毫秒
+      user,
+      timestamp: targetMsg.timestamp * 1000,
       channel: {
         id: channelId,
-        type: sessionType,
-      },
-      member: undefined,
-      guild: undefined,
-      quote: undefined,
-    };
+        type: sessionType === 1 ? Universal.Channel.Type.DIRECT : Universal.Channel.Type.TEXT,
+      }
+    }
 
-    logInfo(`成功获取消息 ${messageId}: `, message);
-    return message;
+    logInfo(`成功获取消息 ${messageId}`)
+    return message
   }
 
   async deleteMessage(channelId: string, messageId: string): Promise<void> {
