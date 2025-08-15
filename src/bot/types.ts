@@ -30,6 +30,7 @@ export interface PrivateMessage {
   msg_status: number // 消息状态：0: 正常, 1: 撤回
   notify_code: string
   new_face_version: number
+  msg_source?: number // 消息来源：5=官方推送, 6=推送通知, 8-11=自动回复, 12=UP主赠言, 13=粉丝团提示, 16=系统, 17=互相关注, 18=系统提示, 19=AI回复
 }
 
 // from private_msg.md -> 会话对象

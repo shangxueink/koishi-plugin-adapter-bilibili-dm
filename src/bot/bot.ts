@@ -369,6 +369,42 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
     }
   }
 
+  /**
+   * 根据消息来源获取消息前缀
+   */
+  private getMessagePrefix(msgSource?: number): string | null {
+    if (!msgSource) return null
+
+    switch (msgSource) {
+      case 5:
+        return '[官方推送消息]'
+      case 6:
+        return '[推送/通知消息]'
+      case 8:
+        return '[此条消息为自动回复]' // 自动回复 - 被关注回复
+      case 9:
+        return '[此条消息为自动回复]' // 自动回复 - 收到消息回复
+      case 10:
+        return '[此条消息为自动回复]' // 自动回复 - 关键词回复
+      case 11:
+        return '[此条消息为自动回复]' // 自动回复 - 大航海上船回复
+      case 12:
+        return '[UP主赠言]' // 自动推送 - UP主赠言
+      case 13:
+        return '[粉丝团系统提示]'
+      case 16:
+        return '[系统消息]'
+      case 17:
+        return '[系统消息]' // 互相关注
+      case 18:
+        return '[系统提示]'
+      case 19:
+        return '[AI回复]'
+      default:
+        return null
+    }
+  }
+
   private async adaptMessage(msg: PrivateMessage, sessionType: number, talkerId: number) {
     if (msg.sender_uid === this.selfId) return
 
@@ -397,7 +433,13 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig> {
       const parsedContent = JSON.parse(msg.content)
       switch (msg.msg_type) {
         case 1:
-          contentFragment = h.parse(parsedContent.content)
+          let textContent = parsedContent.content
+          // 根据消息来源添加标识
+          const messagePrefix = this.getMessagePrefix(msg.msg_source)
+          if (messagePrefix) {
+            textContent = `${messagePrefix} ${textContent}`
+          }
+          contentFragment = h.parse(textContent)
           break
         case 2:
           contentFragment = h('image', { url: parsedContent.url })
