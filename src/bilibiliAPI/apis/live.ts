@@ -136,9 +136,13 @@ export class LiveAPI {
                 }
             )
 
-            if (res.code === 0 && res.data?.live_users?.items) {
-                const liveUsers = res.data.live_users.items
-                logInfo(`成功获取 ${liveUsers.length} 个正在直播的UP主`)
+            if (res.code === 0) {
+                const liveUsers = res.data?.live_users?.items || []
+                if (liveUsers.length > 0) {
+                    logInfo(`成功获取 ${liveUsers.length} 个正在直播的UP主`)
+                } else {
+                    logInfo(`当前没有UP主在直播 (Code: ${res.code})`)
+                }
                 return liveUsers
             } else {
                 loggerError(`获取直播列表失败: ${res.message} (Code: ${res.code})`)
@@ -246,7 +250,7 @@ export class LiveAPI {
             const liveUsers = await this.getLiveUsers()
 
             if (liveUsers.length === 0) {
-                logInfo('当前没有UP主在直播，初始化为空列表')
+                logInfo('初始化完成：当前没有UP主在直播')
                 this.currentLiveUsers = []
                 this.saveCurrentLiveUsers()
                 return
