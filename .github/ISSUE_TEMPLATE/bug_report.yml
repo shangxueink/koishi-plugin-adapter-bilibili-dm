@@ -1,0 +1,169 @@
+name: 🐛 Bug Report
+description: 报告一个 bug 来帮助我们改进
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你花时间填写这个 bug 报告！请提供尽可能详细的信息来帮助我们定位和修复问题。
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: 🐛 Bug 描述
+      description: 清楚简洁地描述这个 bug
+      placeholder: 描述你遇到的问题...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 🔄 复现步骤
+      description: 描述复现这个 bug 的详细步骤
+      placeholder: |
+        1. 进入 '...'
+        2. 点击 '....'
+        3. 滚动到 '....'
+        4. 看到错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 🎯 预期行为
+      description: 清楚简洁地描述你期望发生什么
+      placeholder: 描述预期的正确行为...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      description: 你使用的操作系统
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Ubuntu
+        - Debian
+        - CentOS/RHEL
+        - Arch Linux
+        - 其他 Linux 发行版
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: nodejs-version
+    attributes:
+      label: Node.js 版本
+      description: 你使用的 Node.js 版本
+      placeholder: "例如: 18.17.0"
+    validations:
+      required: true
+
+  - type: input
+    id: koishi-version
+    attributes:
+      label: Koishi 版本
+      description: 你使用的 Koishi 版本
+      placeholder: "例如: 4.16.0"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      description: 你使用的 koishi-plugin-adapter-bilibili-dm 版本
+      placeholder: "例如: 2.2.5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device-type
+    attributes:
+      label: 设备类型
+      description: 如果涉及移动端操作，请选择设备类型
+      options:
+        - 仅桌面端
+        - iPhone
+        - Android 手机
+        - iPad
+        - Android 平板
+        - 其他移动设备
+    validations:
+      required: false
+
+  - type: input
+    id: bilibili-app-version
+    attributes:
+      label: Bilibili APP 版本
+      description: 如果涉及扫码登录，请提供 Bilibili APP 版本
+      placeholder: "例如: 7.50.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: plugin-config
+    attributes:
+      label: 📋 插件配置
+      description: 请提供相关的插件配置信息（请移除敏感信息如 UID、Cookie 等）
+      placeholder: |
+        ```yaml
+        selfId: "你的UID"
+        # 其他相关配置...
+        ```
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📝 日志信息
+      description: 请提供相关的错误日志或控制台输出
+      placeholder: 在这里粘贴日志信息...
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 截图
+      description: 如果适用，请拖拽截图到这里
+      placeholder: 拖拽图片文件到这里...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 🔍 额外信息
+      description: 在这里添加关于问题的任何其他上下文信息
+      placeholder: 其他相关信息...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ 检查清单
+      description: 请在提交前检查以下项目
+      options:
+        - label: 我已经搜索了现有的 issues，确认这不是重复问题
+          required: true
+        - label: 我已经阅读了项目文档
+          required: true
+        - label: 我使用的是最新版本的插件
+          required: false
+        - label: 我已经提供了足够的信息来复现这个问题
+          required: true
+        - label: 我已经移除了日志和配置中的敏感信息
+          required: true
