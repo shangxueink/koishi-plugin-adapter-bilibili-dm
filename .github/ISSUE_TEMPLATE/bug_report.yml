@@ -39,40 +39,22 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: os
+  - type: textarea
+    id: system-info
     attributes:
-      label: 操作系统
-      description: 你使用的操作系统
-      options:
-        - Windows 11
-        - Windows 10
-        - macOS (Intel)
-        - macOS (Apple Silicon)
-        - Ubuntu
-        - Debian
-        - CentOS/RHEL
-        - Arch Linux
-        - 其他 Linux 发行版
-        - 其他
-    validations:
-      required: true
-
-  - type: input
-    id: nodejs-version
-    attributes:
-      label: Node.js 版本
-      description: 你使用的 Node.js 版本
-      placeholder: "例如: 18.17.0"
-    validations:
-      required: true
-
-  - type: input
-    id: koishi-version
-    attributes:
-      label: Koishi 版本
-      description: 你使用的 Koishi 版本
-      placeholder: "例如: 4.16.0"
+      label: 🖥️ 系统信息
+      description: 请在 Koishi 控制台左下角点击信息栏，复制系统信息并粘贴到这里
+      placeholder: |
+        System:
+        OS: Windows 10 10.0.19045
+        CPU: (16) x64 12th Gen Intel(R) Core(TM) i5-12500H
+        Binaries:
+        Node: 22.17.0
+        Yarn: 4.5.3
+        Koishi:
+        Core: 4.18.8
+        Console: 5.30.9
+      render: yaml
     validations:
       required: true
 
@@ -110,16 +92,11 @@ body:
       required: false
 
   - type: textarea
-    id: plugin-config
+    id: screenshots
     attributes:
-      label: 📋 插件配置
-      description: 请提供相关的插件配置信息（请移除敏感信息如 UID、Cookie 等）
-      placeholder: |
-        ```yaml
-        selfId: "你的UID"
-        # 其他相关配置...
-        ```
-      render: yaml
+      label: � 插截图
+      description: 请提供相关截图，包括插件配置界面、错误界面等（请确保移除敏感信息如 UID、Cookie 等）
+      placeholder: 拖拽图片文件到这里...
     validations:
       required: false
 
@@ -130,15 +107,6 @@ body:
       description: 请提供相关的错误日志或控制台输出
       placeholder: 在这里粘贴日志信息...
       render: shell
-    validations:
-      required: false
-
-  - type: textarea
-    id: screenshots
-    attributes:
-      label: 📸 截图
-      description: 如果适用，请拖拽截图到这里
-      placeholder: 拖拽图片文件到这里...
     validations:
       required: false
 

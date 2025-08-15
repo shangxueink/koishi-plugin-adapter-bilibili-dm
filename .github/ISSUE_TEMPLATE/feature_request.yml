@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢你提出功能建议！请详细描述你的想法，这将帮助我们更好地理解和评估你的建议。
+        感谢你提出功能建议！请简洁地描述你的想法。
 
   - type: textarea
     id: feature-description
@@ -20,26 +20,9 @@ body:
   - type: textarea
     id: motivation
     attributes:
-      label: 💡 动机和背景
-      description: 描述为什么需要这个功能，它解决了什么问题？
-      placeholder: 解释这个功能的必要性和价值...
-    validations:
-      required: true
-
-  - type: textarea
-    id: detailed-design
-    attributes:
-      label: 📋 详细设计
-      description: 详细描述这个功能应该如何工作
-      placeholder: |
-        ### 用户界面
-        描述预期的界面变更...
-
-        ### API 设计
-        描述预期的接口...
-
-        ### 配置选项
-        列出需要的新配置选项...
+      label: 💡 为什么需要这个功能？
+      description: 描述这个功能解决了什么问题或带来什么价值
+      placeholder: 解释这个功能的必要性...
     validations:
       required: true
 
@@ -49,26 +32,11 @@ body:
       label: 🎯 使用场景
       description: 描述这个功能的典型使用场景
       placeholder: |
-        **场景 1:**
-        - 用户想要...
-        - 系统应该...
-        - 预期结果...
-
-        **场景 2:**
-        - 用户想要...
-        - 系统应该...
-        - 预期结果...
+        例如：
+        - 当用户想要...时，可以...
+        - 在...情况下，能够...
     validations:
       required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: 🔄 替代方案
-      description: 描述你考虑过的替代解决方案或功能
-      placeholder: 描述其他可能的实现方式...
-    validations:
-      required: false
 
   - type: checkboxes
     id: related-features
@@ -97,46 +65,15 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: complexity
-    attributes:
-      label: 🛠️ 实现复杂度
-      description: 你认为实现这个功能的复杂度如何？
-      options:
-        - 🟢 简单 (配置或小改动)
-        - 🟡 中等 (需要一些开发工作)
-        - 🔴 复杂 (需要大量开发工作)
-        - ❓ 不确定
-    validations:
-      required: false
-
-  - type: textarea
-    id: mockups
-    attributes:
-      label: 📸 模拟图/原型
-      description: 如果有的话，请拖拽模拟图、线框图或原型到这里
-      placeholder: 拖拽图片文件到这里...
-    validations:
-      required: false
-
-  - type: textarea
-    id: references
-    attributes:
-      label: 📚 参考资料
-      description: 提供相关的文档、链接或参考资料
-      placeholder: |
-        - [相关文档](链接)
-        - [参考实现](链接)
-        - [相关讨论](链接)
-    validations:
-      required: false
-
   - type: textarea
     id: additional-context
     attributes:
       label: 💬 额外信息
-      description: 在这里添加关于功能请求的任何其他上下文信息
-      placeholder: 其他相关信息...
+      description: 其他相关信息、参考资料或模拟图
+      placeholder: |
+        - 参考资料链接
+        - 其他说明
+        - 可以拖拽图片到这里
     validations:
       required: false
 
@@ -148,11 +85,7 @@ body:
       options:
         - label: 我已经搜索了现有的 issues，确认这不是重复的功能请求
           required: true
-        - label: 我已经阅读了项目文档和路线图
+        - label: 我已经阅读了项目文档
           required: true
         - label: 这个功能符合项目的目标和范围
           required: true
-        - label: 我已经考虑了这个功能对现有用户的影响
-          required: false
-        - label: 我愿意参与讨论和测试这个功能
-          required: false
